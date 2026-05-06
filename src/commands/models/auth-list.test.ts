@@ -21,7 +21,6 @@ vi.mock("../../agents/auth-profiles.js", () => ({
   ensureAuthProfileStore: mocks.ensureAuthProfileStore,
   externalCliDiscoveryForProviderAuth: mocks.externalCliDiscoveryForProviderAuth,
   resolveAuthProfileDisplayLabel: mocks.resolveAuthProfileDisplayLabel,
-  resolveAuthStatePathForDisplay: (agentDir: string) => `${agentDir}/auth-state.json`,
 }));
 
 vi.mock("./load-config.js", () => ({
@@ -96,23 +95,21 @@ describe("modelsAuthListCommand", () => {
     });
     expect(runtime.jsonPayloads).toHaveLength(1);
     expect(JSON.stringify(runtime.jsonPayloads[0])).not.toContain("secret");
-    const payload = runtime.jsonPayloads[0] as
-      | {
-          agentId?: unknown;
-          provider?: unknown;
-          profiles?: Array<Record<string, unknown>>;
-        }
-      | undefined;
-    expect(payload?.agentId).toBe("coder");
-    expect(payload?.provider).toBe("openai-codex");
-    expect(payload?.profiles).toHaveLength(1);
-    const [profile] = payload?.profiles ?? [];
-    expect(profile?.id).toBe("openai-codex:user@example.com");
-    expect(profile?.provider).toBe("openai-codex");
-    expect(profile?.type).toBe("oauth");
-    expect(profile?.email).toBe("user@example.com");
-    expect(profile?.expiresAt).toBe("2027-01-15T08:00:00.000Z");
-    expect(profile?.cooldownUntil).toBe("2027-01-15T08:00:10.000Z");
+    expect(runtime.jsonPayloads[0]).toMatchObject({
+      agentId: "coder",
+      authStateStore: "sqlite",
+      provider: "openai-codex",
+      profiles: [
+        {
+          id: "openai-codex:user@example.com",
+          provider: "openai-codex",
+          type: "oauth",
+          email: "user@example.com",
+          expiresAt: "2027-01-15T08:00:00.000Z",
+          cooldownUntil: "2027-01-15T08:00:10.000Z",
+        },
+      ],
+    });
   });
 
   it("prints an empty profile list without failing", async () => {
@@ -121,10 +118,6 @@ describe("modelsAuthListCommand", () => {
 
     await modelsAuthListCommand({}, runtime);
 
-    expect(runtime.logs).toEqual([
-      "Agent: main",
-      "Auth state file: /tmp/openclaw/agents/main/auth-state.json",
-      "Profiles: (none)",
-    ]);
+    expect(runtime.logs).toEqual(["Agent: main", "Auth runtime state: SQLite", "Profiles: (none)"]);
   });
 });
