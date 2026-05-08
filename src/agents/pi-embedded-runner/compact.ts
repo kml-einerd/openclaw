@@ -958,6 +958,7 @@ async function compactEmbeddedPiSessionDirectOnce(
         }),
         {
           agentId: sessionAgentId,
+          sessionId: params.sessionId,
           sessionKey: params.sessionKey,
           config: params.config,
           contextWindowTokens: ctxInfo.tokens,
