@@ -1276,6 +1276,8 @@ async function compactEmbeddedPiSessionDirectOnce(
           }
           await runPostCompactionSideEffects({
             config: params.config,
+            agentId: sessionAgentId,
+            sessionId: activeSessionId,
             sessionKey: params.sessionKey,
             sessionFile: activeSessionFile,
           });
