@@ -403,8 +403,7 @@ afterEach(() => {
 describe("agentCommand", () => {
   it("enables the Codex runtime plugin for one-shot OpenAI model overrides", async () => {
     await withTempHome(async (home) => {
-      const storePath = path.join(home, "sessions.json");
-      mockConfig(home, storePath, { models: undefined });
+      mockConfig(home, { models: undefined });
 
       await agentCommand(
         {
@@ -429,8 +428,7 @@ describe("agentCommand", () => {
 
   it("does not enable Codex for one-shot OpenAI overrides when the provider forces PI", async () => {
     await withTempHome(async (home) => {
-      const storePath = path.join(home, "sessions.json");
-      const cfg = mockConfig(home, storePath, { models: undefined });
+      const cfg = mockConfig(home, { models: undefined });
       cfg.models = {
         providers: {
           openai: {
