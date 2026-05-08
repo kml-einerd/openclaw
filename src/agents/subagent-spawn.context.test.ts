@@ -91,7 +91,7 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        sessionFile: "/tmp/parent-session.jsonl",
+        sessionFile: "sqlite-transcript://main/parent-session.jsonl",
         updatedAt: 1,
         totalTokens: 1200,
       },
@@ -99,7 +99,7 @@ describe("sessions_spawn context modes", () => {
     usePersistentStoreMock(store);
     forkSessionFromParentMock.mockImplementation(async () => ({
       sessionId: "forked-session-id",
-      sessionFile: "/tmp/forked-session.jsonl",
+      sessionFile: "sqlite-transcript://main/forked-session.jsonl",
     }));
     const prepareSubagentSpawn = vi.fn(async () => undefined);
     resolveContextEngineMock.mockResolvedValue({ prepareSubagentSpawn });
@@ -118,7 +118,7 @@ describe("sessions_spawn context modes", () => {
     const childSessionKey = requireChildSessionKey(accepted);
     const childEntry = requireStoreEntry(store, childSessionKey);
     expect(childEntry.sessionId).toBe("forked-session-id");
-    expect(childEntry.sessionFile).toBe("/tmp/forked-session.jsonl");
+    expect(childEntry.sessionFile).toBe("sqlite-transcript://main/forked-session.jsonl");
     expect(childEntry.forkedFromParent).toBe(true);
 
     const prepareContext = requireFirstMockArg(prepareSubagentSpawn);
@@ -127,7 +127,7 @@ describe("sessions_spawn context modes", () => {
     expect(prepareContext.contextMode).toBe("fork");
     expect(prepareContext.parentSessionId).toBe("parent-session-id");
     expect(prepareContext.childSessionId).toBe("forked-session-id");
-    expect(prepareContext.childSessionFile).toBe("/tmp/forked-session.jsonl");
+    expect(prepareContext.childSessionFile).toBe("sqlite-transcript://main/forked-session.jsonl");
   });
 
   it("keeps the default spawn context isolated", async () => {
@@ -152,7 +152,7 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        sessionFile: "/tmp/parent-session.jsonl",
+        sessionFile: "sqlite-transcript://main/parent-session.jsonl",
         updatedAt: 1,
         totalTokens: 170_000,
       },
@@ -181,7 +181,7 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        sessionFile: "/tmp/parent-session.jsonl",
+        sessionFile: "sqlite-transcript://main/parent-session.jsonl",
         updatedAt: 1,
         totalTokens: 1200,
       },
@@ -189,7 +189,7 @@ describe("sessions_spawn context modes", () => {
     usePersistentStoreMock(store);
     forkSessionFromParentMock.mockImplementation(async () => ({
       sessionId: "forked-session-id",
-      sessionFile: "/tmp/forked-session.jsonl",
+      sessionFile: "sqlite-transcript://main/forked-session.jsonl",
     }));
     const prepareSubagentSpawn = vi.fn(async () => undefined);
     resolveContextEngineMock.mockResolvedValue({ prepareSubagentSpawn });
