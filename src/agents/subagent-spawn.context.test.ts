@@ -91,7 +91,6 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        transcriptLocator: "sqlite-transcript://main/parent-session",
         updatedAt: 1,
         totalTokens: 1200,
       },
@@ -125,10 +124,15 @@ describe("sessions_spawn context modes", () => {
     expect(prepareContext.childSessionKey).toBe(childSessionKey);
     expect(prepareContext.contextMode).toBe("fork");
     expect(prepareContext.parentSessionId).toBe("parent-session-id");
+    expect(prepareContext.parentTranscriptScope).toStrictEqual({
+      agentId: "main",
+      sessionId: "parent-session-id",
+    });
     expect(prepareContext.childSessionId).toBe("forked-session-id");
-    expect(prepareContext.childTranscriptLocator).toBe(
-      "sqlite-transcript://main/forked-session-id",
-    );
+    expect(prepareContext.childTranscriptScope).toStrictEqual({
+      agentId: "main",
+      sessionId: "forked-session-id",
+    });
   });
 
   it("keeps the default spawn context isolated", async () => {
@@ -153,7 +157,6 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        transcriptLocator: "sqlite-transcript://main/parent-session",
         updatedAt: 1,
         totalTokens: 170_000,
       },
@@ -182,7 +185,6 @@ describe("sessions_spawn context modes", () => {
     const store: SessionStore = {
       main: {
         sessionId: "parent-session-id",
-        transcriptLocator: "sqlite-transcript://main/parent-session",
         updatedAt: 1,
         totalTokens: 1200,
       },
