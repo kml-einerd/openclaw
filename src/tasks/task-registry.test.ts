@@ -186,7 +186,7 @@ function configureTaskRegistryMaintenanceRuntimeForTest(params: {
       return next;
     },
     isCronRuntimeAuthoritative: () => true,
-    resolveCronStoreKey: () => "/tmp/openclaw-test-cron/jobs.json",
+    resolveCronStoreKey: () => "test-cron-store",
     loadCronStoreSync: () => ({ version: 1, jobs: [] }),
     readCronRunLogEntriesSync: () => [],
   });
@@ -2184,7 +2184,7 @@ describe("task-registry", () => {
         resolveTaskForLookupToken: () => undefined,
         setTaskCleanupAfterById: () => null,
         isCronRuntimeAuthoritative: () => true,
-        resolveCronStoreKey: () => "/tmp/openclaw-test-cron/jobs.json",
+        resolveCronStoreKey: () => "test-cron-store",
         loadCronStoreSync: () => ({ version: 1, jobs: [] }),
         readCronRunLogEntriesSync: () => [],
       });
