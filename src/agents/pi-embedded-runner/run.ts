@@ -457,8 +457,12 @@ export async function runEmbeddedPiAgent(
     config: params.config,
     agentId: params.agentId,
   });
+  const resolveTranscriptScope = (sessionId: string) => ({
+    agentId: sessionAgentId,
+    sessionId,
+  });
   const resolveTranscriptBoundaryHandle = (sessionId: string) =>
-    createSqliteSessionTranscriptLocator({ agentId: sessionAgentId, sessionId });
+    createSqliteSessionTranscriptLocator(resolveTranscriptScope(sessionId));
   const sessionLane = resolveSessionLane(params.sessionKey?.trim() || params.sessionId);
   const globalLane = resolveGlobalLane(params.lane);
   const laneTaskTimeoutMs = resolveEmbeddedRunLaneTimeoutMs(params.timeoutMs);
@@ -1642,6 +1646,7 @@ export async function runEmbeddedPiAgent(
                 timeoutCompactResult = await contextEngine.compact({
                   sessionId: activeSessionId,
                   sessionKey: params.sessionKey,
+                  transcriptScope: resolveTranscriptScope(activeSessionId),
                   transcriptLocator: activeTranscriptLocator,
                   tokenBudget: ctxInfo.tokens,
                   force: true,
@@ -1819,6 +1824,7 @@ export async function runEmbeddedPiAgent(
                 compactResult = await contextEngine.compact({
                   sessionId: activeSessionId,
                   sessionKey: params.sessionKey,
+                  transcriptScope: resolveTranscriptScope(activeSessionId),
                   transcriptLocator: activeTranscriptLocator,
                   tokenBudget: ctxInfo.tokens,
                   ...(observedOverflowTokens !== undefined
@@ -1835,6 +1841,7 @@ export async function runEmbeddedPiAgent(
                     sessionAgentId,
                     sessionId: activeSessionId,
                     sessionKey: params.sessionKey,
+                    transcriptScope: resolveTranscriptScope(activeSessionId),
                     transcriptLocator: activeTranscriptLocator,
                     reason: "compaction",
                     runtimeContext: overflowCompactionRuntimeContext,
