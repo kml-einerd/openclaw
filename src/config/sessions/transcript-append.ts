@@ -21,6 +21,7 @@ function normalizeRequiredScope(params: { agentId?: string; sessionId?: string }
 }
 
 export async function appendSessionTranscriptMessage(params: {
+  dedupeLatestAssistantText?: string;
   message: unknown;
   agentId: string;
   now?: number;
@@ -33,6 +34,9 @@ export async function appendSessionTranscriptMessage(params: {
   const sessionVersion = await loadCurrentSessionVersion();
   return appendSqliteSessionTranscriptMessageAtomically({
     agentId: scope.agentId,
+    ...(params.dedupeLatestAssistantText
+      ? { dedupeLatestAssistantText: params.dedupeLatestAssistantText }
+      : {}),
     sessionId: scope.sessionId,
     sessionVersion,
     cwd: params.cwd,
