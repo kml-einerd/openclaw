@@ -58,7 +58,7 @@ export function handleCompactionEnd(
         : undefined;
     ctx.noteCompactionTokensAfter(tokensAfter);
     const observedCompactionCount = ctx.getCompactionCount();
-    void reconcileSessionStoreCompactionCountAfterSuccess({
+    void reconcileSessionRowCompactionCountAfterSuccess({
       sessionKey: ctx.params.sessionKey,
       agentId: ctx.params.agentId,
       observedCompactionCount,
@@ -106,13 +106,13 @@ export function handleCompactionEnd(
   }
 }
 
-export async function reconcileSessionStoreCompactionCountAfterSuccess(params: {
+export async function reconcileSessionRowCompactionCountAfterSuccess(params: {
   sessionKey?: string;
   agentId?: string;
   observedCompactionCount: number;
   now?: number;
 }): Promise<number | undefined> {
-  const { reconcileSessionStoreCompactionCountAfterSuccess: reconcile } =
+  const { reconcileSessionRowCompactionCountAfterSuccess: reconcile } =
     await import("./pi-embedded-subscribe.handlers.compaction.runtime.js");
   return reconcile(params);
 }
