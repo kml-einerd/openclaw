@@ -221,7 +221,7 @@ describe("info command handlers", () => {
     );
   });
 
-  it("does not route the legacy session store path through /status", async () => {
+  it("does not route the legacy session path through /status", async () => {
     const params = buildInfoParams("/status", {
       commands: { text: true },
       channels: { whatsapp: { allowFrom: ["*"] } },
