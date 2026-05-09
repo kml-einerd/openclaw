@@ -1682,7 +1682,6 @@ export async function runEmbeddedPiAgent(
                     agentId: sessionAgentId,
                     sessionId: activeSessionId,
                     sessionKey: params.sessionKey,
-                    transcriptLocator: activeTranscriptLocator,
                   });
                 }
                 log.info(
