@@ -512,7 +512,7 @@ describe("appendAssistantMessageToSessionTranscript", () => {
     });
   });
 
-  it("appends scoped SQLite transcript entries without importing JSONL at runtime", async () => {
+  it("appends scoped SQLite transcript entries without runtime legacy import", async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-transcript-state-"));
     vi.stubEnv("OPENCLAW_STATE_DIR", stateDir);
     appendSqliteSessionTranscriptEvent({
