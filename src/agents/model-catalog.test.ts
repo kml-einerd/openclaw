@@ -12,7 +12,7 @@ let loadModelCatalog: typeof import("./model-catalog.js").loadModelCatalog;
 let modelSupportsInput: typeof import("./model-catalog.js").modelSupportsInput;
 let resetModelCatalogCacheForTest: typeof import("./model-catalog.js").resetModelCatalogCacheForTest;
 let augmentCatalogMock: ReturnType<typeof vi.fn>;
-let ensureOpenClawModelsJsonMock: ReturnType<typeof vi.fn>;
+let ensureOpenClawModelCatalogMock: ReturnType<typeof vi.fn>;
 let currentPluginMetadataSnapshotMock: ReturnType<typeof vi.fn>;
 let loadPluginMetadataSnapshotMock: ReturnType<typeof vi.fn>;
 let readFileMock: ReturnType<typeof vi.fn>;
@@ -152,9 +152,9 @@ describe("loadModelCatalog", () => {
       ...(await importOriginal<typeof import("node:fs/promises")>()),
       readFile: readFileMock,
     }));
-    ensureOpenClawModelsJsonMock = vi.fn().mockResolvedValue({ agentDir: "/tmp", wrote: false });
+    ensureOpenClawModelCatalogMock = vi.fn().mockResolvedValue({ agentDir: "/tmp", wrote: false });
     vi.doMock("./models-config.js", () => ({
-      ensureOpenClawModelCatalog: ensureOpenClawModelsJsonMock,
+      ensureOpenClawModelCatalog: ensureOpenClawModelCatalogMock,
     }));
     vi.doMock("./models-config-store.js", () => ({
       readStoredModelsConfigRaw: () =>
@@ -195,7 +195,7 @@ describe("loadModelCatalog", () => {
       Object.assign(new Error("stored model catalog missing"), { code: "ENOENT" }),
     );
     storedModelsConfigRaw = undefined;
-    ensureOpenClawModelsJsonMock.mockClear();
+    ensureOpenClawModelCatalogMock.mockClear();
     augmentCatalogMock.mockClear();
     currentPluginMetadataSnapshotMock.mockReset();
     currentPluginMetadataSnapshotMock.mockReturnValue(emptyPluginMetadataSnapshot());
@@ -326,7 +326,7 @@ describe("loadModelCatalog", () => {
 
     const entry = requireCatalogEntry(result, "openai", "gpt-test");
     expect(entry.name).toBe("GPT Test");
-    expect(ensureOpenClawModelsJsonMock).not.toHaveBeenCalled();
+    expect(ensureOpenClawModelCatalogMock).not.toHaveBeenCalled();
     expect(importPiSdk).not.toHaveBeenCalled();
     expect(loadPluginMetadataSnapshotMock).not.toHaveBeenCalled();
   });
@@ -376,7 +376,7 @@ describe("loadModelCatalog", () => {
         compat: undefined,
       },
     ]);
-    expect(ensureOpenClawModelsJsonMock).not.toHaveBeenCalled();
+    expect(ensureOpenClawModelCatalogMock).not.toHaveBeenCalled();
     expect(augmentCatalogMock).not.toHaveBeenCalled();
   });
 
@@ -434,7 +434,7 @@ describe("loadModelCatalog", () => {
         reasoning: false,
       },
     ]);
-    expect(ensureOpenClawModelsJsonMock).not.toHaveBeenCalled();
+    expect(ensureOpenClawModelCatalogMock).not.toHaveBeenCalled();
     expect(importPiSdk).not.toHaveBeenCalled();
   });
 
@@ -460,7 +460,7 @@ describe("loadModelCatalog", () => {
         compat: undefined,
       },
     ]);
-    expect(ensureOpenClawModelsJsonMock).not.toHaveBeenCalled();
+    expect(ensureOpenClawModelCatalogMock).not.toHaveBeenCalled();
     expect(augmentCatalogMock).not.toHaveBeenCalled();
   });
 
@@ -499,7 +499,7 @@ describe("loadModelCatalog", () => {
         compat: undefined,
       },
     ]);
-    expect(ensureOpenClawModelsJsonMock).not.toHaveBeenCalled();
+    expect(ensureOpenClawModelCatalogMock).not.toHaveBeenCalled();
     expect(augmentCatalogMock).not.toHaveBeenCalled();
   });
 

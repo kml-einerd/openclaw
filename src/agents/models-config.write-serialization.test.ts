@@ -11,11 +11,11 @@ import {
   withModelsTempHome,
 } from "./models-config.e2e-harness.js";
 
-const planOpenClawModelsJsonMock = vi.fn();
+const planOpenClawModelCatalogMock = vi.fn();
 
 installModelsConfigTestHooks();
 
-let ensureOpenClawModelsJson: typeof import("./models-config.js").ensureOpenClawModelsJson;
+let ensureOpenClawModelCatalog: typeof import("./models-config.js").ensureOpenClawModelCatalog;
 let clearCurrentPluginMetadataSnapshot: typeof import("../plugins/current-plugin-metadata-snapshot.js").clearCurrentPluginMetadataSnapshot;
 let setCurrentPluginMetadataSnapshot: typeof import("../plugins/current-plugin-metadata-snapshot.js").setCurrentPluginMetadataSnapshot;
 
@@ -74,16 +74,16 @@ async function expectMissingPath(operation: Promise<unknown>) {
 
 beforeAll(async () => {
   vi.doMock("./models-config.plan.js", () => ({
-    planOpenClawModelCatalog: (...args: unknown[]) => planOpenClawModelsJsonMock(...args),
+    planOpenClawModelCatalog: (...args: unknown[]) => planOpenClawModelCatalogMock(...args),
   }));
-  ({ ensureOpenClawModelsJson } = await import("./models-config.js"));
+  ({ ensureOpenClawModelCatalog } = await import("./models-config.js"));
   ({ clearCurrentPluginMetadataSnapshot, setCurrentPluginMetadataSnapshot } =
     await import("../plugins/current-plugin-metadata-snapshot.js"));
 });
 
 beforeEach(() => {
   clearCurrentPluginMetadataSnapshot();
-  planOpenClawModelsJsonMock
+  planOpenClawModelCatalogMock
     .mockReset()
     .mockImplementation(async (params: { cfg?: typeof CUSTOM_PROXY_MODELS_CONFIG }) => ({
       action: "write",
@@ -98,9 +98,9 @@ describe("models-config write serialization", () => {
       setCurrentPluginMetadataSnapshot(snapshot, { config: {} });
       const agentDir = path.join(home, "agent-non-default");
 
-      await ensureOpenClawModelsJson({}, agentDir);
+      await ensureOpenClawModelCatalog({}, agentDir);
 
-      const params = planOpenClawModelsJsonMock.mock.calls[0]?.[0] as
+      const params = planOpenClawModelCatalogMock.mock.calls[0]?.[0] as
         | { pluginMetadataSnapshot?: PluginMetadataSnapshot }
         | undefined;
       expect(params?.pluginMetadataSnapshot).not.toBe(snapshot);
@@ -114,9 +114,9 @@ describe("models-config write serialization", () => {
       setCurrentPluginMetadataSnapshot(snapshot, { config: {} });
       const agentDir = path.join(home, "agent-non-default");
 
-      await ensureOpenClawModelsJson({}, agentDir, { workspaceDir });
+      await ensureOpenClawModelCatalog({}, agentDir, { workspaceDir });
 
-      const params = planOpenClawModelsJsonMock.mock.calls[0]?.[0] as
+      const params = planOpenClawModelCatalogMock.mock.calls[0]?.[0] as
         | { workspaceDir?: string; pluginMetadataSnapshot?: PluginMetadataSnapshot }
         | undefined;
       expect(params?.workspaceDir).toBe(workspaceDir);
@@ -132,7 +132,7 @@ describe("models-config write serialization", () => {
         },
       };
 
-      const result = await ensureOpenClawModelsJson(cfg);
+      const result = await ensureOpenClawModelCatalog(cfg);
 
       expect(result.agentDir).toBe(path.join(home, ".openclaw", "agents", "ops", "agent"));
       expect(readStoredModelsConfigRaw(result.agentDir)?.raw).toContain('"providers"');
@@ -145,19 +145,19 @@ describe("models-config write serialization", () => {
 
   it("does not reuse scoped startup discovery cache for a different provider scope", async () => {
     await withModelsTempHome(async (home) => {
-      planOpenClawModelsJsonMock.mockImplementation(async () => ({ action: "skip" }));
+      planOpenClawModelCatalogMock.mockImplementation(async () => ({ action: "skip" }));
       const agentDir = path.join(home, "agent");
-      await ensureOpenClawModelsJson({}, agentDir, {
+      await ensureOpenClawModelCatalog({}, agentDir, {
         providerDiscoveryProviderIds: ["openai"],
         providerDiscoveryTimeoutMs: 5000,
       });
-      await ensureOpenClawModelsJson({}, agentDir, {
+      await ensureOpenClawModelCatalog({}, agentDir, {
         providerDiscoveryProviderIds: ["anthropic"],
         providerDiscoveryTimeoutMs: 5000,
       });
 
-      expect(planOpenClawModelsJsonMock).toHaveBeenCalledTimes(2);
-      const params = planOpenClawModelsJsonMock.mock.calls[1]?.[0] as
+      expect(planOpenClawModelCatalogMock).toHaveBeenCalledTimes(2);
+      const params = planOpenClawModelCatalogMock.mock.calls[1]?.[0] as
         | {
             providerDiscoveryProviderIds?: string[];
             providerDiscoveryTimeoutMs?: number;
@@ -170,42 +170,42 @@ describe("models-config write serialization", () => {
 
   it("keeps the ready cache warm after the model catalog is written", async () => {
     await withModelsTempHome(async () => {
-      await ensureOpenClawModelsJson(CUSTOM_PROXY_MODELS_CONFIG);
-      await ensureOpenClawModelsJson(CUSTOM_PROXY_MODELS_CONFIG);
+      await ensureOpenClawModelCatalog(CUSTOM_PROXY_MODELS_CONFIG);
+      await ensureOpenClawModelCatalog(CUSTOM_PROXY_MODELS_CONFIG);
 
-      expect(planOpenClawModelsJsonMock).toHaveBeenCalledTimes(1);
+      expect(planOpenClawModelCatalogMock).toHaveBeenCalledTimes(1);
     });
   });
 
   it("invalidates the ready cache when stored model catalog config changes externally", async () => {
     await withModelsTempHome(async () => {
-      await ensureOpenClawModelsJson(CUSTOM_PROXY_MODELS_CONFIG);
-      await ensureOpenClawModelsJson(CUSTOM_PROXY_MODELS_CONFIG);
+      await ensureOpenClawModelCatalog(CUSTOM_PROXY_MODELS_CONFIG);
+      await ensureOpenClawModelCatalog(CUSTOM_PROXY_MODELS_CONFIG);
 
       writeStoredModelsConfigRaw(
         resolveDefaultAgentDir({}),
         `${JSON.stringify({ providers: { external: { models: [] } } })}\n`,
         { now: () => Date.now() + 2_000 },
       );
-      await ensureOpenClawModelsJson(CUSTOM_PROXY_MODELS_CONFIG);
+      await ensureOpenClawModelCatalog(CUSTOM_PROXY_MODELS_CONFIG);
 
-      expect(planOpenClawModelsJsonMock).toHaveBeenCalledTimes(2);
+      expect(planOpenClawModelCatalogMock).toHaveBeenCalledTimes(2);
     });
   });
 
   it("keeps distinct config fingerprints cached without evicting each other", async () => {
     await withModelsTempHome(async () => {
-      planOpenClawModelsJsonMock.mockImplementation(async () => ({ action: "noop" }));
+      planOpenClawModelCatalogMock.mockImplementation(async () => ({ action: "noop" }));
       const first = structuredClone(CUSTOM_PROXY_MODELS_CONFIG);
       const second = structuredClone(CUSTOM_PROXY_MODELS_CONFIG);
       first.agents = { defaults: { model: "openai/gpt-5.4" } };
       second.agents = { defaults: { model: "anthropic/claude-sonnet-4-5" } };
 
-      await ensureOpenClawModelsJson(first);
-      await ensureOpenClawModelsJson(second);
-      await ensureOpenClawModelsJson(first);
+      await ensureOpenClawModelCatalog(first);
+      await ensureOpenClawModelCatalog(second);
+      await ensureOpenClawModelCatalog(first);
 
-      expect(planOpenClawModelsJsonMock).toHaveBeenCalledTimes(2);
+      expect(planOpenClawModelCatalogMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -232,7 +232,7 @@ describe("models-config write serialization", () => {
         releaseModelsWrites = resolve;
       });
       let planCount = 0;
-      planOpenClawModelsJsonMock.mockImplementation(
+      planOpenClawModelCatalogMock.mockImplementation(
         async (params: { cfg?: typeof CUSTOM_PROXY_MODELS_CONFIG }) => {
           planCount += 1;
           inFlightPlans += 1;
@@ -255,8 +255,8 @@ describe("models-config write serialization", () => {
       );
 
       const writes = Promise.all([
-        ensureOpenClawModelsJson(first),
-        ensureOpenClawModelsJson(second),
+        ensureOpenClawModelCatalog(first),
+        ensureOpenClawModelCatalog(second),
       ]);
       await firstModelsWriteStarted;
       await Promise.resolve();

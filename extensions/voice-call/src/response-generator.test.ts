@@ -20,7 +20,6 @@ type EmbeddedAgentArgs = {
   agentDir?: string;
   agentId?: string;
   workspaceDir?: string;
-  sessionFile?: string;
 };
 
 function createAgentRuntime(payloads: Array<Record<string, unknown>>) {
