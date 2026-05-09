@@ -363,7 +363,7 @@ export async function maybeHandleModelDirectiveInfo(params: {
     };
   }
 
-  const modelsPath = `${params.agentDir}/models.json`;
+  const modelsPath = `SQLite model catalog for ${params.agentDir}`;
   const formatPath = (value: string) => shortenHomePath(value);
   const authMode: ModelAuthDetailMode = "verbose";
   if (pickerCatalog.length === 0) {

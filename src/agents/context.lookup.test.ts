@@ -12,7 +12,7 @@ const contextTestState = vi.hoisted(() => {
   const state = {
     loadConfigImpl: () => ({}) as unknown,
     discoveredModels: [] as DiscoveredModel[],
-    ensureOpenClawModelsJson: vi.fn(async () => {}),
+    ensureOpenClawModelCatalog: vi.fn(async () => {}),
     discoverAuthStorage: vi.fn(() => ({})),
     discoverModels: vi.fn(() => ({
       getAll: () => state.discoveredModels,
@@ -26,7 +26,7 @@ vi.mock("../config/config.js", () => ({
 }));
 
 vi.mock("./models-config.runtime.js", () => ({
-  ensureOpenClawModelsJson: contextTestState.ensureOpenClawModelsJson,
+  ensureOpenClawModelCatalog: contextTestState.ensureOpenClawModelCatalog,
 }));
 
 vi.mock("./pi-model-discovery-runtime.js", () => ({
@@ -40,8 +40,8 @@ function mockContextDeps(params: {
 }) {
   contextTestState.loadConfigImpl = params.getRuntimeConfig;
   contextTestState.discoveredModels = params.discoveredModels ?? [];
-  contextTestState.ensureOpenClawModelsJson.mockClear();
-  return { ensureOpenClawModelsJson: contextTestState.ensureOpenClawModelsJson };
+  contextTestState.ensureOpenClawModelCatalog.mockClear();
+  return { ensureOpenClawModelCatalog: contextTestState.ensureOpenClawModelCatalog };
 }
 
 function mockContextModuleDeps(loadConfigImpl: () => unknown) {
@@ -108,7 +108,7 @@ describe("lookupContextTokens", () => {
   beforeEach(() => {
     contextTestState.loadConfigImpl = () => ({});
     contextTestState.discoveredModels = [];
-    contextTestState.ensureOpenClawModelsJson.mockClear();
+    contextTestState.ensureOpenClawModelCatalog.mockClear();
     contextTestState.discoverAuthStorage.mockClear();
     contextTestState.discoverModels.mockClear();
     contextModule.resetContextWindowCacheForTest();

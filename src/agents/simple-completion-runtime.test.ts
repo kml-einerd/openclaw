@@ -444,7 +444,7 @@ describe("prepareSimpleCompletionModel", () => {
     });
     hoisted.getApiKeyForModelMock.mockResolvedValueOnce({
       apiKey: "ollama-local",
-      source: "models.json (local marker)",
+      source: "stored model catalog (local marker)",
       mode: "api-key",
     });
 
@@ -529,7 +529,7 @@ describe("completeWithPreparedSimpleCompletionModel", () => {
       model,
       auth: {
         apiKey: "ollama-local",
-        source: "models.json (local marker)",
+        source: "stored model catalog (local marker)",
         mode: "api-key",
       },
       cfg,

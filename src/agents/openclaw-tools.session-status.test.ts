@@ -1265,7 +1265,9 @@ describe("session_status tool", () => {
       },
     };
     resolveUsableCustomProviderApiKeyMock.mockImplementation((params) =>
-      params?.provider === "qwen-dashscope" ? { apiKey: "sk-test", source: "models.json" } : null,
+      params?.provider === "qwen-dashscope"
+        ? { apiKey: "sk-test", source: "stored model catalog" }
+        : null,
     );
 
     const tool = getSessionStatusTool();
@@ -1279,7 +1281,7 @@ describe("session_status tool", () => {
             primary: "qwen-dashscope/qwen-max",
           }),
         }),
-        modelAuth: "api-key (models.json)",
+        modelAuth: "api-key (stored model catalog)",
       }),
     );
   });

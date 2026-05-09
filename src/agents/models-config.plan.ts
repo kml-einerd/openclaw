@@ -15,7 +15,7 @@ import {
 } from "./models-config.providers.js";
 
 type ModelsConfig = NonNullable<OpenClawConfig["models"]>;
-export type ResolveImplicitProvidersForModelsJson = (params: {
+export type ResolveImplicitProvidersForModelCatalog = (params: {
   agentDir: string;
   config: OpenClawConfig;
   env: NodeJS.ProcessEnv;
@@ -27,7 +27,7 @@ export type ResolveImplicitProvidersForModelsJson = (params: {
   providerDiscoveryEntriesOnly?: boolean;
 }) => Promise<Record<string, ProviderConfig>>;
 
-export type ModelsJsonPlan =
+export type ModelCatalogPlan =
   | {
       action: "skip";
     }
@@ -39,7 +39,7 @@ export type ModelsJsonPlan =
       contents: string;
     };
 
-export async function resolveProvidersForModelsJsonWithDeps(
+export async function resolveProvidersForModelCatalogWithDeps(
   params: {
     cfg: OpenClawConfig;
     agentDir: string;
@@ -51,7 +51,7 @@ export async function resolveProvidersForModelsJsonWithDeps(
     providerDiscoveryEntriesOnly?: boolean;
   },
   deps?: {
-    resolveImplicitProviders?: ResolveImplicitProvidersForModelsJson;
+    resolveImplicitProviders?: ResolveImplicitProvidersForModelCatalog;
   },
 ): Promise<Record<string, ProviderConfig>> {
   const { cfg, agentDir, env } = params;
@@ -104,7 +104,7 @@ function resolveProvidersForMode(params: {
   });
 }
 
-export async function planOpenClawModelsJsonWithDeps(
+export async function planOpenClawModelCatalogWithDeps(
   params: {
     cfg: OpenClawConfig;
     sourceConfigForSecrets?: OpenClawConfig;
@@ -119,11 +119,11 @@ export async function planOpenClawModelsJsonWithDeps(
     providerDiscoveryEntriesOnly?: boolean;
   },
   deps?: {
-    resolveImplicitProviders?: ResolveImplicitProvidersForModelsJson;
+    resolveImplicitProviders?: ResolveImplicitProvidersForModelCatalog;
   },
-): Promise<ModelsJsonPlan> {
+): Promise<ModelCatalogPlan> {
   const { cfg, agentDir, env } = params;
-  const providers = await resolveProvidersForModelsJsonWithDeps(
+  const providers = await resolveProvidersForModelCatalogWithDeps(
     {
       cfg,
       agentDir,
@@ -187,8 +187,14 @@ export async function planOpenClawModelsJsonWithDeps(
   };
 }
 
-export async function planOpenClawModelsJson(
-  params: Parameters<typeof planOpenClawModelsJsonWithDeps>[0],
-): Promise<ModelsJsonPlan> {
-  return planOpenClawModelsJsonWithDeps(params);
+export async function planOpenClawModelCatalog(
+  params: Parameters<typeof planOpenClawModelCatalogWithDeps>[0],
+): Promise<ModelCatalogPlan> {
+  return planOpenClawModelCatalogWithDeps(params);
 }
+
+export type ResolveImplicitProvidersForModelsJson = ResolveImplicitProvidersForModelCatalog;
+export type ModelsJsonPlan = ModelCatalogPlan;
+export const resolveProvidersForModelsJsonWithDeps = resolveProvidersForModelCatalogWithDeps;
+export const planOpenClawModelsJsonWithDeps = planOpenClawModelCatalogWithDeps;
+export const planOpenClawModelsJson = planOpenClawModelCatalog;
