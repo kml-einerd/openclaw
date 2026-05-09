@@ -3,10 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { resolvePiCredentialMapFromStore } from "./pi-auth-credentials.js";
-import {
-  addEnvBackedPiCredentials,
-  scrubLegacyStaticAuthJsonEntriesForDiscovery,
-} from "./pi-auth-discovery-core.js";
+import { addEnvBackedPiCredentials } from "./pi-auth-discovery-core.js";
+import { discoverAuthStorage } from "./pi-model-discovery.js";
 
 vi.mock("./model-auth-env-vars.js", () => ({
   listProviderEnvAuthLookupKeys: () => ["mistral", "workspace-cloud"],
@@ -63,13 +61,6 @@ async function writeLegacyAuthJson(
   await fs.writeFile(path.join(agentDir, "auth.json"), JSON.stringify(authEntries, null, 2));
 }
 
-async function readLegacyAuthJson(agentDir: string): Promise<Record<string, unknown>> {
-  return JSON.parse(await fs.readFile(path.join(agentDir, "auth.json"), "utf8")) as Record<
-    string,
-    unknown
-  >;
-}
-
 describe("discoverAuthStorage", () => {
   it("converts runtime auth profiles into pi discovery credentials", () => {
     const credentials = resolvePiCredentialMapFromStore({
@@ -111,8 +102,9 @@ describe("discoverAuthStorage", () => {
     expect(codexCredential?.refresh).toBe("oauth-refresh");
   });
 
-  it("scrubs static api_key entries from legacy auth.json and keeps oauth entries", async () => {
+  it("does not touch retired auth.json during discovery", async () => {
     await withAgentDir(async (agentDir) => {
+      const authPath = path.join(agentDir, "auth.json");
       await writeLegacyAuthJson(agentDir, {
         openrouter: { type: "api_key", key: "legacy-static-key" },
         "openai-codex": {
@@ -122,39 +114,12 @@ describe("discoverAuthStorage", () => {
           expires: Date.now() + 60_000,
         },
       });
+      const before = await fs.readFile(authPath, "utf8");
 
-      scrubLegacyStaticAuthJsonEntriesForDiscovery(path.join(agentDir, "auth.json"));
+      const storage = discoverAuthStorage(agentDir, { skipCredentials: true });
 
-      const parsed = await readLegacyAuthJson(agentDir);
-      expect(parsed.openrouter).toBeUndefined();
-      const codexEntry = parsed["openai-codex"] as { type?: string; access?: string } | undefined;
-      expect(codexEntry?.type).toBe("oauth");
-      expect(codexEntry?.access).toBe("oauth-access");
-    });
-  });
-
-  it("preserves legacy auth.json when auth store is forced read-only", async () => {
-    await withAgentDir(async (agentDir) => {
-      const previous = process.env.OPENCLAW_AUTH_STORE_READONLY;
-      process.env.OPENCLAW_AUTH_STORE_READONLY = "1";
-      try {
-        await writeLegacyAuthJson(agentDir, {
-          openrouter: { type: "api_key", key: "legacy-static-key" },
-        });
-
-        scrubLegacyStaticAuthJsonEntriesForDiscovery(path.join(agentDir, "auth.json"));
-
-        const parsed = await readLegacyAuthJson(agentDir);
-        const openrouterEntry = parsed.openrouter as { type?: string; key?: string } | undefined;
-        expect(openrouterEntry?.type).toBe("api_key");
-        expect(openrouterEntry?.key).toBe("legacy-static-key");
-      } finally {
-        if (previous === undefined) {
-          delete process.env.OPENCLAW_AUTH_STORE_READONLY;
-        } else {
-          process.env.OPENCLAW_AUTH_STORE_READONLY = previous;
-        }
-      }
+      expect(storage).toBeTruthy();
+      await expect(fs.readFile(authPath, "utf8")).resolves.toBe(before);
     });
   });
 
