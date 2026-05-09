@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createSqliteSessionTranscriptLocator } from "../../config/sessions/paths.js";
 import type { ContextEngineRuntimeContext } from "../../context-engine/types.js";
 import { peekSystemEvents, resetSystemEventsForTest } from "../../infra/system-events.js";
 import {
@@ -38,8 +37,8 @@ let runContextEngineMaintenance: typeof import("./context-engine-maintenance.js"
 // import reloading, so they cannot safely import the constant directly.
 const TURN_MAINTENANCE_TASK_KIND = "context_engine_turn_maintenance";
 
-function sqliteTranscript(sessionId: string): string {
-  return createSqliteSessionTranscriptLocator({ agentId: "main", sessionId });
+function sqliteTranscriptScope(sessionId: string) {
+  return { agentId: "main", sessionId };
 }
 
 async function flushAsyncWork(times = 4): Promise<void> {
@@ -119,7 +118,7 @@ describe("buildContextEngineMaintenanceRuntimeContext", () => {
     const runtimeContext = buildContextEngineMaintenanceRuntimeContext({
       sessionId: "session-1",
       sessionKey: "agent:main:session-1",
-      transcriptLocator: sqliteTranscript("session-1"),
+      transcriptScope: sqliteTranscriptScope("session-1"),
       runtimeContext: { workspaceDir: "/tmp/workspace" },
     });
 
@@ -159,7 +158,7 @@ describe("buildContextEngineMaintenanceRuntimeContext", () => {
     const runtimeContext = buildContextEngineMaintenanceRuntimeContext({
       sessionId: "session-1",
       sessionKey: "agent:main:session-1",
-      transcriptLocator: sqliteTranscript("session-1"),
+      transcriptScope: sqliteTranscriptScope("session-1"),
       sessionManager,
     });
 
@@ -214,7 +213,7 @@ describe("buildContextEngineMaintenanceRuntimeContext", () => {
       const runtimeContext = buildContextEngineMaintenanceRuntimeContext({
         sessionId: "session-rewrite-handoff",
         sessionKey,
-        transcriptLocator: sqliteTranscript("session-rewrite-handoff"),
+        transcriptScope: sqliteTranscriptScope("session-rewrite-handoff"),
         deferTranscriptRewriteToSessionLane: true,
       });
 
@@ -319,7 +318,7 @@ describe("runContextEngineMaintenance", () => {
       },
       sessionId: "session-1",
       sessionKey: "agent:main:session-1",
-      transcriptLocator: sqliteTranscript("session-1"),
+      transcriptScope: { agentId: "main", sessionId: "session-1" },
       reason: "turn",
       runtimeContext: { workspaceDir: "/tmp/workspace" },
     });
@@ -333,7 +332,7 @@ describe("runContextEngineMaintenance", () => {
     expectRecordFields(maintainParams, {
       sessionId: "session-1",
       sessionKey: "agent:main:session-1",
-      transcriptLocator: sqliteTranscript("session-1"),
+      transcriptScope: { agentId: "main", sessionId: "session-1" },
     });
     expect(
       requireRecord(maintainParams.runtimeContext, "maintain runtime context").workspaceDir,
@@ -392,7 +391,7 @@ describe("runContextEngineMaintenance", () => {
       },
       sessionId: "session-background-file-rewrite",
       sessionKey: "agent:main:session-background-file-rewrite",
-      transcriptLocator: sqliteTranscript("session-background-file-rewrite"),
+      transcriptScope: sqliteTranscriptScope("session-background-file-rewrite"),
       reason: "turn",
       executionMode: "background",
       sessionManager,
@@ -478,7 +477,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-1",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-1"),
+          transcriptScope: sqliteTranscriptScope("session-1"),
           reason: "turn",
           runtimeContext: {
             workspaceDir: "/tmp/workspace",
@@ -514,7 +513,7 @@ describe("runContextEngineMaintenance", () => {
         expectRecordFields(maintainParams, {
           sessionId: "session-1",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-1"),
+          transcriptScope: { agentId: "main", sessionId: "session-1" },
         });
         expectRecordFields(requireRecord(maintainParams.runtimeContext, "runtime context"), {
           workspaceDir: "/tmp/workspace",
@@ -599,14 +598,14 @@ describe("runContextEngineMaintenance", () => {
             contextEngine: backgroundEngine,
             sessionId: "session-2",
             sessionKey,
-            transcriptLocator: sqliteTranscript("session-2"),
+            transcriptScope: sqliteTranscriptScope("session-2"),
             reason: "turn",
           }),
           runContextEngineMaintenance({
             contextEngine: backgroundEngine,
             sessionId: "session-2",
             sessionKey,
-            transcriptLocator: sqliteTranscript("session-2"),
+            transcriptScope: sqliteTranscriptScope("session-2"),
             reason: "turn",
           }),
         ]);
@@ -678,7 +677,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-rerun",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-rerun"),
+          transcriptScope: sqliteTranscriptScope("session-rerun"),
           reason: "turn",
         });
 
@@ -688,7 +687,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-rerun",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-rerun"),
+          transcriptScope: sqliteTranscriptScope("session-rerun"),
           reason: "turn",
         });
 
@@ -756,7 +755,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-legacy",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-legacy"),
+          transcriptScope: sqliteTranscriptScope("session-legacy"),
           reason: "turn",
         });
 
@@ -817,7 +816,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-enqueue-reject",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-enqueue-reject"),
+          transcriptScope: sqliteTranscriptScope("session-enqueue-reject"),
           reason: "turn",
         });
         await flushAsyncWork();
@@ -886,7 +885,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-3",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-3"),
+          transcriptScope: sqliteTranscriptScope("session-3"),
           reason: "turn",
         });
 
@@ -987,7 +986,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-rewrite-priority",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-rewrite-priority"),
+          transcriptScope: sqliteTranscriptScope("session-rewrite-priority"),
           reason: "turn",
         });
 
@@ -1060,7 +1059,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-fast",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-fast"),
+          transcriptScope: sqliteTranscriptScope("session-fast"),
           reason: "turn",
         });
         await waitForAssertion(() => expect(maintain).toHaveBeenCalledTimes(1));
@@ -1115,7 +1114,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-long",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-long"),
+          transcriptScope: sqliteTranscriptScope("session-long"),
           reason: "turn",
         });
 
@@ -1187,7 +1186,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-throttle",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-throttle"),
+          transcriptScope: sqliteTranscriptScope("session-throttle"),
           reason: "turn",
         });
 
@@ -1256,7 +1255,7 @@ describe("runContextEngineMaintenance", () => {
           contextEngine: backgroundEngine,
           sessionId: "session-fail",
           sessionKey,
-          transcriptLocator: sqliteTranscript("session-fail"),
+          transcriptScope: sqliteTranscriptScope("session-fail"),
           reason: "turn",
         });
         await waitForAssertion(() =>
