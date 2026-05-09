@@ -59,7 +59,7 @@ describe("maybeRepairLegacyFlatAuthProfileStores", () => {
         baseUrl: "http://10.0.2.2:11434/v1",
       },
     };
-    const authPath = await state.writeAuthProfiles(legacy);
+    const authPath = await state.writeLegacyAuthProfiles(legacy);
 
     const result = await maybeRepairLegacyFlatAuthProfileStores({
       cfg: {},
@@ -96,7 +96,7 @@ describe("maybeRepairLegacyFlatAuthProfileStores", () => {
         },
       },
     };
-    const authPath = await state.writeAuthProfiles(legacy);
+    const authPath = await state.writeLegacyAuthProfiles(legacy);
 
     const result = await maybeRepairLegacyFlatAuthProfileStores({
       cfg: {},
@@ -197,7 +197,7 @@ describe("maybeRepairLegacyFlatAuthProfileStores", () => {
         apiKey: "sk-openai",
       },
     };
-    const authPath = await state.writeAuthProfiles(legacy);
+    const authPath = await state.writeLegacyAuthProfiles(legacy);
 
     const result = await maybeRepairLegacyFlatAuthProfileStores({
       cfg: {},
@@ -226,7 +226,7 @@ describe("maybeRepairLegacyFlatAuthProfileStores", () => {
         },
       },
     };
-    const authPath = await state.writeAuthProfiles(legacy);
+    const authPath = await state.writeLegacyAuthProfiles(legacy);
     const cfg = {};
 
     const result = await maybeRepairLegacyFlatAuthProfileStores({
