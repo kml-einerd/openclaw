@@ -76,7 +76,7 @@ function requireRecord(value: unknown, label: string): Record<string, unknown> {
 
 function expectRecordFields(record: Record<string, unknown>, expected: Record<string, unknown>) {
   for (const [key, value] of Object.entries(expected)) {
-    expect(record[key]).toBe(value);
+    expect(record[key]).toStrictEqual(value);
   }
 }
 
