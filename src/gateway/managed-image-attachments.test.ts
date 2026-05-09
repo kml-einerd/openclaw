@@ -183,7 +183,6 @@ async function requestManagedImage(params: {
     );
   });
   loadSessionEntryMock.mockReturnValue({
-    storePath: path.join(params.stateDir, "openclaw-state.sqlite"),
     entry: params.sessionEntry ?? {
       sessionId: "sess-1",
     },
@@ -948,7 +947,6 @@ describe("cleanupManagedOutgoingImageRecords", () => {
   it("cleans up dereferenced records and original files", async () => {
     const fixture = await createFixture(stateDir);
     loadSessionEntryMock.mockReturnValue({
-      storePath: path.join(stateDir, "openclaw-state.sqlite"),
       entry: { sessionId: "sess-main" },
     });
     readSessionMessagesMock.mockReturnValue([]);
@@ -982,7 +980,6 @@ describe("cleanupManagedOutgoingImageRecords", () => {
       id: mediaId,
     });
     loadSessionEntryMock.mockReturnValue({
-      storePath: path.join(stateDir, "openclaw-state.sqlite"),
       entry: { sessionId: "sess-main" },
     });
     readSessionMessagesMock.mockReturnValue([]);
@@ -1003,7 +1000,6 @@ describe("cleanupManagedOutgoingImageRecords", () => {
   it("retains committed records that are still referenced by a full-image block", async () => {
     const fixture = await createFixture(stateDir);
     loadSessionEntryMock.mockReturnValue({
-      storePath: path.join(stateDir, "openclaw-state.sqlite"),
       entry: { sessionId: "sess-main" },
     });
     readSessionMessagesMock.mockReturnValue([
@@ -1039,7 +1035,6 @@ describe("cleanupManagedOutgoingImageRecords", () => {
       filename: "att-2.png",
     });
     loadSessionEntryMock.mockReturnValue({
-      storePath: path.join(stateDir, "openclaw-state.sqlite"),
       entry: { sessionId: "sess-main" },
     });
     readSessionMessagesMock.mockReturnValue([
@@ -1081,7 +1076,6 @@ describe("cleanupManagedOutgoingImageRecords", () => {
     });
 
     loadSessionEntryMock.mockImplementation((sessionKey: string) => ({
-      storePath: path.join(stateDir, "openclaw-state.sqlite"),
       entry: {
         sessionId: sessionKey === retainedFixture.sessionKey ? "sess-other" : "sess-main",
       },
