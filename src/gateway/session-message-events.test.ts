@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
-import { createSqliteSessionTranscriptLocator } from "../config/sessions/test-helpers/transcript-locator.js";
 import {
   exportSqliteSessionTranscriptJsonl,
   replaceSqliteSessionTranscriptEvents,
@@ -319,10 +318,6 @@ describe("session.message websocket events", () => {
         },
       },
     });
-    const transcriptPath = createSqliteSessionTranscriptLocator({
-      agentId: "main",
-      sessionId: "sess-main",
-    });
     replaceTranscriptEvents({
       sessionId: "sess-main",
       events: [{ type: "session", version: 1, id: "sess-main" }],
@@ -416,10 +411,6 @@ describe("session.message websocket events", () => {
         },
       },
     });
-    const transcriptPath = createSqliteSessionTranscriptLocator({
-      agentId: "main",
-      sessionId: "sess-main",
-    });
     const transcriptMessage = {
       role: "assistant",
       content: [{ type: "text", text: "usage snapshot" }],
@@ -478,10 +469,6 @@ describe("session.message websocket events", () => {
 
   test("includes spawnedBy metadata on session.message and sessions.changed transcript events", async () => {
     await setupTranscriptFixtureState();
-    const transcriptPath = createSqliteSessionTranscriptLocator({
-      agentId: "main",
-      sessionId: "sess-child",
-    });
     await seedGatewaySessionEntries({
       entries: {
         child: {
@@ -574,10 +561,6 @@ describe("session.message websocket events", () => {
 
   test("includes route thread metadata on session.message and sessions.changed transcript events", async () => {
     await setupTranscriptFixtureState();
-    const transcriptPath = createSqliteSessionTranscriptLocator({
-      agentId: "main",
-      sessionId: "sess-thread",
-    });
     await seedGatewaySessionEntries({
       entries: {
         main: {
