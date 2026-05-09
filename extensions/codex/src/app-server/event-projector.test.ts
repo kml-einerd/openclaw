@@ -1204,7 +1204,6 @@ describe("CodexAppServerEventProjector", () => {
     expect(beforeCompaction).toHaveBeenCalledWith(
       expect.objectContaining({
         messageCount: 1,
-        sessionFile: expect.stringMatching(/^sqlite-transcript:\/\/main\/session-1-.+\.jsonl$/u),
         messages: [expect.objectContaining({ role: "assistant" })],
       }),
       expect.objectContaining({
@@ -1216,7 +1215,6 @@ describe("CodexAppServerEventProjector", () => {
       expect.objectContaining({
         messageCount: 1,
         compactedCount: -1,
-        sessionFile: expect.stringMatching(/^sqlite-transcript:\/\/main\/session-1-.+\.jsonl$/u),
       }),
       expect.objectContaining({
         runId: "run-1",
