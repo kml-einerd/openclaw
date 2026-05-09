@@ -1,17 +1,26 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  loadAuthProfileStoreWithoutExternalProfiles,
+  resolveAuthProfileStoreLocationForDisplay,
+} from "openclaw/plugin-sdk/agent-runtime";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/provider-auth";
+import { updateAuthProfileStoreWithLock } from "openclaw/plugin-sdk/provider-auth";
 import { afterEach, describe, expect, it } from "vitest";
 import { HERMES_REASON_AUTH_PROFILE_EXISTS } from "./items.js";
 import { buildHermesMigrationProvider } from "./provider.js";
 import { cleanupTempRoots, makeContext, makeTempRoot, writeFile } from "./test/provider-helpers.js";
+
+function stateEnv(stateDir: string): NodeJS.ProcessEnv {
+  return { ...process.env, OPENCLAW_STATE_DIR: stateDir };
+}
 
 describe("Hermes migration secret items", () => {
   afterEach(async () => {
     await cleanupTempRoots();
   });
 
-  it("uses configured agentDir for secret planning and imports without runtime helpers", async () => {
+  it("uses configured agentDir for secret planning and imports into SQLite", async () => {
     const root = await makeTempRoot();
     const source = path.join(root, "hermes");
     const workspaceDir = path.join(root, "workspace");
@@ -49,7 +58,10 @@ describe("Hermes migration secret items", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "secret:openai",
-          target: `${customAgentDir}/auth-profiles.json#openai:hermes-import`,
+          target: `${resolveAuthProfileStoreLocationForDisplay(
+            customAgentDir,
+            stateEnv(stateDir),
+          )}/openai:hermes-import`,
           status: "planned",
         }),
       ]),
@@ -68,9 +80,9 @@ describe("Hermes migration secret items", () => {
     );
 
     expect(result.summary.errors).toBe(0);
-    const authStore = JSON.parse(
-      await fs.readFile(path.join(customAgentDir, "auth-profiles.json"), "utf8"),
-    ) as { profiles?: Record<string, { key?: string; provider?: string }> };
+    const authStore = loadAuthProfileStoreWithoutExternalProfiles(customAgentDir, {
+      env: stateEnv(stateDir),
+    });
     expect(authStore.profiles?.["openai:hermes-import"]).toMatchObject({
       provider: "openai",
       key: "sk-hermes",
@@ -78,6 +90,9 @@ describe("Hermes migration secret items", () => {
     await expect(
       fs.access(path.join(stateDir, "agents", "custom", "agent", "auth-profiles.json")),
     ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(fs.access(path.join(customAgentDir, "auth-profiles.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("keeps secret conflict checks read-only during planning", async () => {
@@ -121,23 +136,18 @@ describe("Hermes migration secret items", () => {
       reportDir,
     });
     const plan = await provider.plan(ctx);
-    await writeFile(
-      path.join(agentDir, "auth-profiles.json"),
-      JSON.stringify(
-        {
-          version: 1,
-          profiles: {
-            "openai:hermes-import": {
-              type: "api_key",
-              provider: "openai",
-              key: "sk-late",
-            },
-          },
-        },
-        null,
-        2,
-      ),
-    );
+    await updateAuthProfileStoreWithLock({
+      agentDir,
+      env: stateEnv(stateDir),
+      updater(store) {
+        store.profiles["openai:hermes-import"] = {
+          type: "api_key",
+          provider: "openai",
+          key: "sk-late",
+        };
+        return true;
+      },
+    });
 
     const result = await provider.apply(ctx, plan);
 
@@ -151,9 +161,9 @@ describe("Hermes migration secret items", () => {
       ]),
     );
     expect(result.summary.conflicts).toBe(1);
-    const authStore = JSON.parse(
-      await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf8"),
-    ) as { profiles?: Record<string, { key?: string }> };
+    const authStore = loadAuthProfileStoreWithoutExternalProfiles(agentDir, {
+      env: stateEnv(stateDir),
+    });
     expect(authStore.profiles?.["openai:hermes-import"]?.key).toBe("sk-late");
   });
 });
