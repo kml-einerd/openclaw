@@ -26,6 +26,11 @@ Codex heartbeat turns also get `heartbeat_respond` in the searchable OpenClaw
 tool catalog by default, so the agent can record whether the wake should stay
 quiet or notify without encoding that control flow in final text.
 
+OpenClaw starts Codex app-server threads with Codex native code mode enabled.
+That keeps deferred/searchable OpenClaw dynamic tools inside Codex's own tool
+execution surface instead of adding a PI-style tool-search wrapper on top of
+Codex.
+
 Heartbeat-specific initiative guidance is sent as a Codex collaboration-mode
 developer instruction on the heartbeat turn itself. Ordinary chat turns restore
 Codex Default mode instead of carrying heartbeat philosophy in their normal

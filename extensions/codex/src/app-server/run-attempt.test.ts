@@ -3684,6 +3684,10 @@ describe("runCodexAppServerAttempt", () => {
       "features.codex_hooks": true,
       "hooks.PreToolUse": [],
     };
+    const expectedConfig = {
+      ...config,
+      "features.code_mode": true,
+    };
 
     await startOrResumeThread({
       client: { request } as never,
@@ -3706,13 +3710,13 @@ describe("runCodexAppServerAttempt", () => {
       [
         "thread/start",
         expect.objectContaining({
-          config,
+          config: expectedConfig,
         }),
       ],
       [
         "thread/resume",
         expect.objectContaining({
-          config,
+          config: expectedConfig,
         }),
       ],
     ]);
@@ -3763,6 +3767,7 @@ describe("runCodexAppServerAttempt", () => {
             "features.codex_hooks": true,
             hooks: { PreToolUse: [] },
             ...createPluginAppConfigPatch(),
+            "features.code_mode": true,
           },
         }),
       ],
@@ -3833,13 +3838,17 @@ describe("runCodexAppServerAttempt", () => {
           config: {
             "features.codex_hooks": true,
             ...createPluginAppConfigPatch(),
+            "features.code_mode": true,
           },
         }),
       ],
       [
         "thread/resume",
         expect.objectContaining({
-          config: { "features.codex_hooks": true },
+          config: {
+            "features.codex_hooks": true,
+            "features.code_mode": true,
+          },
         }),
       ],
     ]);
@@ -3907,6 +3916,7 @@ describe("runCodexAppServerAttempt", () => {
                 open_world_enabled: false,
               },
             },
+            "features.code_mode": true,
           },
         }),
       ],
@@ -3954,7 +3964,7 @@ describe("runCodexAppServerAttempt", () => {
     });
 
     expect(request.mock.calls).toEqual([
-      ["thread/resume", expect.not.objectContaining({ config: expect.anything() })],
+      ["thread/resume", expect.objectContaining({ config: { "features.code_mode": true } })],
     ]);
     await expect(readCodexAppServerBinding(sessionFile)).resolves.toMatchObject({
       threadId: "thread-existing",
@@ -4009,7 +4019,10 @@ describe("runCodexAppServerAttempt", () => {
       [
         "thread/start",
         expect.objectContaining({
-          config: createPluginAppConfigPatch(),
+          config: {
+            ...createPluginAppConfigPatch(),
+            "features.code_mode": true,
+          },
         }),
       ],
     ]);
@@ -4070,7 +4083,7 @@ describe("runCodexAppServerAttempt", () => {
 
     expect(buildPluginThreadConfig).toHaveBeenCalledTimes(1);
     expect(request.mock.calls).toEqual([
-      ["thread/resume", expect.not.objectContaining({ config: expect.anything() })],
+      ["thread/resume", expect.objectContaining({ config: { "features.code_mode": true } })],
     ]);
   });
 
@@ -4120,7 +4133,10 @@ describe("runCodexAppServerAttempt", () => {
       [
         "thread/start",
         expect.objectContaining({
-          config: createTwoPluginAppConfigPatch(),
+          config: {
+            ...createTwoPluginAppConfigPatch(),
+            "features.code_mode": true,
+          },
         }),
       ],
     ]);
@@ -4182,7 +4198,10 @@ describe("runCodexAppServerAttempt", () => {
       [
         "thread/start",
         expect.objectContaining({
-          config: createTwoCalendarAppConfigPatch(),
+          config: {
+            ...createTwoCalendarAppConfigPatch(),
+            "features.code_mode": true,
+          },
         }),
       ],
     ]);
@@ -4231,7 +4250,10 @@ describe("runCodexAppServerAttempt", () => {
       [
         "thread/start",
         expect.objectContaining({
-          config: createPluginAppConfigPatch(),
+          config: {
+            ...createPluginAppConfigPatch(),
+            "features.code_mode": true,
+          },
         }),
       ],
     ]);
@@ -4408,6 +4430,7 @@ describe("runCodexAppServerAttempt", () => {
       approvalsReviewer: "guardian_subagent",
       sandbox: "danger-full-access",
       serviceTier: "flex",
+      config: { "features.code_mode": true },
       developerInstructions: expect.stringContaining(CODEX_GPT5_BEHAVIOR_CONTRACT),
       persistExtendedHistory: true,
     });
