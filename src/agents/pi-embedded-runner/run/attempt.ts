@@ -1807,7 +1807,6 @@ export async function runEmbeddedAttempt(
         runId: params.runId,
         sessionId: activeSession.sessionId,
         sessionKey: params.sessionKey,
-        transcriptLocator: params.transcriptLocator,
         provider: params.provider,
         modelId: params.modelId,
         modelApi: params.model.api,
@@ -1816,7 +1815,6 @@ export async function runEmbeddedAttempt(
       });
       trajectoryRecorder?.recordEvent("session.started", {
         trigger: params.trigger,
-        transcriptLocator: params.transcriptLocator,
         workspaceDir: effectiveWorkspace,
         agentId: sessionAgentId,
         messageProvider: params.messageProvider,
@@ -1830,7 +1828,7 @@ export async function runEmbeddedAttempt(
           env: process.env,
           config: params.config,
           workspaceDir: effectiveWorkspace,
-          transcriptLocator: params.transcriptLocator,
+          sessionId: activeSession.sessionId,
           sessionKey: params.sessionKey,
           agentId: sessionAgentId,
           trigger: params.trigger,
