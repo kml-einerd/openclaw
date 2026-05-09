@@ -1456,12 +1456,11 @@ export async function runEmbeddedAttempt(
       }
       const sessionTranscriptLocator = createSqliteSessionTranscriptLocator(sessionTranscriptScope);
       await runAttemptContextEngineBootstrap({
-        hadTranscriptLocator: hadTranscriptEvents,
+        hadTranscript: hadTranscriptEvents,
         contextEngine: activeContextEngine,
         sessionId: params.sessionId,
         sessionKey: params.sessionKey,
         transcriptScope: sessionTranscriptScope,
-        transcriptLocator: sessionTranscriptLocator,
         sessionManager,
         runtimeContext: buildAfterTurnRuntimeContext({
           attempt: params,
