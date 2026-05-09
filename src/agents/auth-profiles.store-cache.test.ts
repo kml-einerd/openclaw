@@ -6,6 +6,7 @@ import { AUTH_STORE_VERSION } from "./auth-profiles/constants.js";
 import {
   clearRuntimeAuthProfileStoreSnapshots,
   ensureAuthProfileStore,
+  saveAuthProfileStore,
 } from "./auth-profiles/store.js";
 import type { OAuthCredential } from "./auth-profiles/types.js";
 
@@ -49,26 +50,19 @@ async function withAgentDirEnv(prefix: string, run: (agentDir: string) => void |
 }
 
 function writeAuthStore(agentDir: string, key: string) {
-  const authPath = path.join(agentDir, "auth-profiles.json");
-  fs.writeFileSync(
-    authPath,
-    `${JSON.stringify(
-      {
-        version: AUTH_STORE_VERSION,
-        profiles: {
-          "openai:default": {
-            type: "api_key",
-            provider: "openai",
-            key,
-          },
+  saveAuthProfileStore(
+    {
+      version: AUTH_STORE_VERSION,
+      profiles: {
+        "openai:default": {
+          type: "api_key",
+          provider: "openai",
+          key,
         },
       },
-      null,
-      2,
-    )}\n`,
-    "utf8",
+    },
+    agentDir,
   );
-  return authPath;
 }
 
 describe("auth profile store cache", () => {
@@ -118,13 +112,11 @@ describe("auth profile store cache", () => {
 
   it("refreshes the cached auth store after auth-profiles.json changes", async () => {
     await withAgentDirEnv("openclaw-auth-store-refresh-", async (agentDir) => {
-      const authPath = writeAuthStore(agentDir, "sk-test-1");
+      writeAuthStore(agentDir, "sk-test-1");
 
       ensureAuthProfileStore(agentDir);
 
       writeAuthStore(agentDir, "sk-test-2");
-      const bumpedMtime = new Date(Date.now() + 2_000);
-      fs.utimesSync(authPath, bumpedMtime, bumpedMtime);
 
       const reloaded = ensureAuthProfileStore(agentDir);
 

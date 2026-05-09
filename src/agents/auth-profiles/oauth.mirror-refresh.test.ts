@@ -1,10 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetFileLockStateForTest } from "../../infra/file-lock.js";
 import { captureEnv } from "../../test-utils/env.js";
 import { __testing as externalAuthTesting } from "./external-auth.js";
-import "./oauth-file-lock-passthrough.test-support.js";
 import { getOAuthProviderRuntimeMocks } from "./oauth-common-mocks.test-support.js";
 import {
   OAUTH_AGENT_ENV_KEYS,
@@ -16,6 +14,7 @@ import {
   resetOAuthProviderRuntimeMocks,
 } from "./oauth-test-utils.js";
 import { resolveApiKeyForProfile, resetOAuthRefreshQueuesForTest } from "./oauth.js";
+import { loadPersistedAuthProfileStore } from "./persisted.js";
 import {
   clearRuntimeAuthProfileStoreSnapshots,
   ensureAuthProfileStore,
@@ -34,6 +33,14 @@ function requireOAuthCredential(store: AuthProfileStore, profileId: string): OAu
     throw new Error(`expected OAuth credential for ${profileId}`);
   }
   return profile;
+}
+
+function readPersistedStore(agentDir: string): AuthProfileStore {
+  const store = loadPersistedAuthProfileStore(agentDir);
+  if (!store) {
+    throw new Error(`Expected persisted auth store for ${agentDir}`);
+  }
+  return store;
 }
 
 vi.mock("../pi-ai-oauth-contract.js", () => ({
@@ -60,7 +67,6 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
   });
 
   beforeEach(async () => {
-    resetFileLockStateForTest();
     resetOAuthProviderRuntimeMocks({
       refreshProviderOAuthCredentialWithPluginMock,
       formatProviderAuthProfileApiKeyWithPluginMock,
@@ -75,7 +81,6 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
 
   afterEach(async () => {
     envSnapshot.restore();
-    resetFileLockStateForTest();
     externalAuthTesting.resetResolveExternalAuthProfilesForTest();
     clearRuntimeAuthProfileStoreSnapshots();
     resetOAuthRefreshQueuesForTest();
@@ -118,9 +123,7 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
 
     // Main store should now carry the refreshed credential, so a peer agent
     // starting fresh will adopt rather than race.
-    const mainRaw = JSON.parse(
-      await fs.readFile(path.join(mainAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const mainRaw = readPersistedStore(mainAgentDir);
     const mainCredential = requireOAuthCredential(mainRaw, profileId);
     expect(mainCredential.access).toBe("sub-refreshed-access");
     expect(mainCredential.refresh).toBe("sub-refreshed-refresh");
@@ -158,9 +161,7 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
     });
 
     expect(result?.apiKey).toBe("main-refreshed-access");
-    const mainRaw = JSON.parse(
-      await fs.readFile(path.join(mainAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const mainRaw = readPersistedStore(mainAgentDir);
     const mainCredential = requireOAuthCredential(mainRaw, profileId);
     expect(mainCredential.access).toBe("main-refreshed-access");
     expect(mainCredential.refresh).toBe("main-refreshed-refresh");
@@ -329,16 +330,12 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
     expect(result?.apiKey).toBe("main-owner-refreshed-access");
     expect(refreshProviderOAuthCredentialWithPluginMock).toHaveBeenCalledTimes(1);
 
-    const subRaw = JSON.parse(
-      await fs.readFile(path.join(subAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const subRaw = readPersistedStore(subAgentDir);
     const subCredential = requireOAuthCredential(subRaw, profileId);
     expect(subCredential.access).toBe("local-stale-access");
     expect(subCredential.refresh).toBe("local-stale-refresh");
 
-    const mainRaw = JSON.parse(
-      await fs.readFile(path.join(mainAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const mainRaw = readPersistedStore(mainAgentDir);
     const mainCredential = requireOAuthCredential(mainRaw, profileId);
     expect(mainCredential.access).toBe("main-owner-refreshed-access");
     expect(mainCredential.refresh).toBe("main-owner-refreshed-refresh");
@@ -407,9 +404,7 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
     expect(result?.provider).toBe(provider);
 
     // Sub-agent's store keeps its local expired credential; inherited OAuth is read-through.
-    const subRaw = JSON.parse(
-      await fs.readFile(path.join(subAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const subRaw = readPersistedStore(subAgentDir);
     expect(requireOAuthCredential(subRaw, profileId).access).toBe("cached-access-token");
   });
 
@@ -445,9 +440,7 @@ describe("resolveApiKeyForProfile OAuth refresh mirror-to-main (#26322)", () => 
     expect(result?.apiKey).toBe("plugin-refreshed-access");
 
     // Main store must have been mirrored from the plugin-refresh branch.
-    const mainRaw = JSON.parse(
-      await fs.readFile(path.join(mainAgentDir, "auth-profiles.json"), "utf8"),
-    ) as AuthProfileStore;
+    const mainRaw = readPersistedStore(mainAgentDir);
     const mainCredential = requireOAuthCredential(mainRaw, profileId);
     expect(mainCredential.access).toBe("plugin-refreshed-access");
     expect(mainCredential.refresh).toBe("plugin-refreshed-refresh");
