@@ -1,4 +1,3 @@
-import { resolveOAuthPath } from "../../config/paths.js";
 import { coerceSecretRef } from "../../config/types.secrets.js";
 import { loadJsonFile } from "../../infra/json-file.js";
 import { normalizeProviderId } from "../provider-id.js";
@@ -10,7 +9,7 @@ import {
   normalizeAuthEmailToken,
   normalizeAuthIdentityToken,
 } from "./oauth-shared.js";
-import { resolveAuthStorePath, resolveLegacyAuthStorePath } from "./paths.js";
+import { resolveAuthStorePath } from "./paths.js";
 import {
   coerceAuthProfileState,
   loadPersistedAuthProfileState,
@@ -22,11 +21,8 @@ import type {
   AuthProfileSecretsStore,
   AuthProfileStore,
   OAuthCredential,
-  OAuthCredentials,
   ProfileUsageStats,
 } from "./types.js";
-
-export type LegacyAuthStore = Record<string, AuthProfileCredential>;
 
 type CredentialRejectReason = "non_object" | "invalid_type" | "missing_provider";
 type RejectedCredentialEntry = { key: string; reason: CredentialRejectReason };
@@ -103,28 +99,6 @@ function warnRejectedCredentialEntries(source: string, rejected: RejectedCredent
     reasons,
     keys: rejected.slice(0, 10).map((entry) => entry.key),
   });
-}
-
-function coerceLegacyAuthStore(raw: unknown): LegacyAuthStore | null {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const record = raw as Record<string, unknown>;
-  if ("profiles" in record) {
-    return null;
-  }
-  const entries: LegacyAuthStore = {};
-  const rejected: RejectedCredentialEntry[] = [];
-  for (const [key, value] of Object.entries(record)) {
-    const parsed = parseCredentialEntry(value, key);
-    if (!parsed.ok) {
-      rejected.push({ key, reason: parsed.reason });
-      continue;
-    }
-    entries[key] = parsed.credential;
-  }
-  warnRejectedCredentialEntries("auth.json", rejected);
-  return Object.keys(entries).length > 0 ? entries : null;
 }
 
 export function coercePersistedAuthProfileStore(raw: unknown): AuthProfileStore | null {
@@ -526,69 +500,6 @@ export function buildPersistedAuthProfileSecretsStore(
   };
 }
 
-export function applyLegacyAuthStore(store: AuthProfileStore, legacy: LegacyAuthStore): void {
-  for (const [provider, cred] of Object.entries(legacy)) {
-    const profileId = `${provider}:default`;
-    const credentialProvider = cred.provider ?? provider;
-    if (cred.type === "api_key") {
-      store.profiles[profileId] = {
-        type: "api_key",
-        provider: credentialProvider,
-        key: cred.key,
-        ...(cred.email ? { email: cred.email } : {}),
-      };
-      continue;
-    }
-    if (cred.type === "token") {
-      store.profiles[profileId] = {
-        type: "token",
-        provider: credentialProvider,
-        token: cred.token,
-        ...(typeof cred.expires === "number" ? { expires: cred.expires } : {}),
-        ...(cred.email ? { email: cred.email } : {}),
-      };
-      continue;
-    }
-    store.profiles[profileId] = {
-      type: "oauth",
-      provider: credentialProvider,
-      access: cred.access,
-      refresh: cred.refresh,
-      expires: cred.expires,
-      ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
-      ...(cred.projectId ? { projectId: cred.projectId } : {}),
-      ...(cred.accountId ? { accountId: cred.accountId } : {}),
-      ...(cred.email ? { email: cred.email } : {}),
-    };
-  }
-}
-
-export function mergeOAuthFileIntoStore(store: AuthProfileStore): boolean {
-  const oauthPath = resolveOAuthPath();
-  const oauthRaw = loadJsonFile(oauthPath);
-  if (!oauthRaw || typeof oauthRaw !== "object") {
-    return false;
-  }
-  const oauthEntries = oauthRaw as Record<string, OAuthCredentials>;
-  let mutated = false;
-  for (const [provider, creds] of Object.entries(oauthEntries)) {
-    if (!creds || typeof creds !== "object") {
-      continue;
-    }
-    const profileId = `${provider}:default`;
-    if (store.profiles[profileId]) {
-      continue;
-    }
-    store.profiles[profileId] = {
-      type: "oauth",
-      provider,
-      ...creds,
-    };
-    mutated = true;
-  }
-  return mutated;
-}
-
 export function loadPersistedAuthProfileStore(agentDir?: string): AuthProfileStore | null {
   const authPath = resolveAuthStorePath(agentDir);
   const raw = loadJsonFile(authPath);
@@ -600,8 +511,4 @@ export function loadPersistedAuthProfileStore(agentDir?: string): AuthProfileSto
     ...store,
     ...mergeAuthProfileState(coerceAuthProfileState(raw), loadPersistedAuthProfileState(agentDir)),
   };
-}
-
-export function loadLegacyAuthProfileStore(agentDir?: string): LegacyAuthStore | null {
-  return coerceLegacyAuthStore(loadJsonFile(resolveLegacyAuthStorePath(agentDir)));
 }
