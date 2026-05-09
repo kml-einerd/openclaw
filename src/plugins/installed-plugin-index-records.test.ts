@@ -2,10 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveLegacyInstalledPluginIndexStorePath } from "../commands/doctor/legacy/installed-plugin-index-path.js";
 import type { PluginInstallRecord } from "../config/types.plugins.js";
 import { closeOpenClawStateDatabaseForTest } from "../state/openclaw-state-db.js";
-import { readOpenClawStateKvJson } from "../state/openclaw-state-kv.js";
+import { readOpenClawStateKvJson, writeOpenClawStateKvJson } from "../state/openclaw-state-kv.js";
 import type { PluginCandidate } from "./discovery.js";
 import {
   loadInstalledPluginIndexInstallRecords,
@@ -47,6 +46,10 @@ function createPluginCandidate(stateDir: string, pluginId: string): PluginCandid
   };
 }
 
+function obsoleteIndexPath(stateDir: string): string {
+  return path.join(stateDir, "plugins", "installs.json");
+}
+
 afterEach(() => {
   closeOpenClawStateDatabaseForTest();
   for (const dir of tempDirs.splice(0)) {
@@ -74,7 +77,7 @@ describe("plugin index install records store", () => {
       },
     );
 
-    const indexPath = resolveLegacyInstalledPluginIndexStorePath({ stateDir });
+    const indexPath = obsoleteIndexPath(stateDir);
     expect(indexPath).toBe(path.join(stateDir, "plugins", "installs.json"));
     expect(fs.existsSync(indexPath)).toBe(false);
     expect(
@@ -125,7 +128,7 @@ describe("plugin index install records store", () => {
       },
     );
 
-    expect(fs.existsSync(resolveLegacyInstalledPluginIndexStorePath({ stateDir }))).toBe(false);
+    expect(fs.existsSync(obsoleteIndexPath(stateDir))).toBe(false);
     expect(
       readOpenClawStateKvJson("installed_plugin_index", "current", {
         env: { OPENCLAW_STATE_DIR: stateDir },
@@ -176,7 +179,7 @@ describe("plugin index install records store", () => {
 
   it("ignores legacy persisted records until doctor imports the plugin index", async () => {
     const stateDir = makeStateDir();
-    const indexPath = resolveLegacyInstalledPluginIndexStorePath({ stateDir });
+    const indexPath = obsoleteIndexPath(stateDir);
     fs.mkdirSync(path.dirname(indexPath), { recursive: true });
     fs.writeFileSync(
       indexPath,
@@ -209,10 +212,6 @@ describe("plugin index install records store", () => {
       pluginId: "codex",
       version: "2026.5.2",
     });
-    const indexPath = resolveLegacyInstalledPluginIndexStorePath({ stateDir });
-    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-    fs.writeFileSync(indexPath, JSON.stringify({ installRecords: {}, plugins: [] }), "utf8");
-
     await expect(loadInstalledPluginIndexInstallRecords({ stateDir })).resolves.toMatchObject({
       codex: {
         source: "npm",
@@ -410,10 +409,13 @@ describe("plugin index install records store", () => {
 
   it("ignores invalid persisted plugin index files", async () => {
     const stateDir = makeStateDir();
-    fs.mkdirSync(path.join(stateDir, "plugins"), { recursive: true });
-    fs.writeFileSync(
-      resolveLegacyInstalledPluginIndexStorePath({ stateDir }),
-      JSON.stringify({ version: 999, records: {} }),
+    writeOpenClawStateKvJson(
+      "installed_plugin_index",
+      "current",
+      { version: 999, records: {} },
+      {
+        env: { OPENCLAW_STATE_DIR: stateDir },
+      },
     );
 
     await expect(readPersistedInstalledPluginIndexInstallRecords({ stateDir })).resolves.toBeNull();
