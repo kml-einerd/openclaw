@@ -1,5 +1,6 @@
 import { coerceSecretRef } from "../../config/types.secrets.js";
 import type { OpenClawStateDatabase } from "../../state/openclaw-state-db.js";
+import type { OpenClawStateDatabaseOptions } from "../../state/openclaw-state-db.js";
 import {
   readOpenClawStateKvJsonResult,
   readOpenClawStateKvJsonResultFromDatabase,
@@ -521,10 +522,12 @@ export type PersistedAuthProfileStoreEntry = {
 
 export function loadPersistedAuthProfileStoreEntry(
   agentDir?: string,
+  options: OpenClawStateDatabaseOptions = {},
 ): PersistedAuthProfileStoreEntry | null {
   const result = readOpenClawStateKvJsonResult(
     AUTH_PROFILE_STORE_KV_SCOPE,
     authProfileStoreKey(agentDir),
+    options,
   );
   if (!result.exists || result.value === undefined) {
     return null;
@@ -575,18 +578,23 @@ export function loadPersistedAuthProfileStoreEntryFromDatabase(
   };
 }
 
-export function loadPersistedAuthProfileStore(agentDir?: string): AuthProfileStore | null {
-  return loadPersistedAuthProfileStoreEntry(agentDir)?.store ?? null;
+export function loadPersistedAuthProfileStore(
+  agentDir?: string,
+  options: OpenClawStateDatabaseOptions = {},
+): AuthProfileStore | null {
+  return loadPersistedAuthProfileStoreEntry(agentDir, options)?.store ?? null;
 }
 
 export function savePersistedAuthProfileSecretsStore(
   store: AuthProfileSecretsStore,
   agentDir?: string,
+  options: OpenClawStateDatabaseOptions = {},
 ): void {
   writeOpenClawStateKvJson<OpenClawStateJsonValue>(
     AUTH_PROFILE_STORE_KV_SCOPE,
     authProfileStoreKey(agentDir),
     store as unknown as OpenClawStateJsonValue,
+    options,
   );
 }
 
@@ -605,9 +613,15 @@ export function savePersistedAuthProfileSecretsStoreInTransaction(
   );
 }
 
-export function hasPersistedAuthProfileSecretsStore(agentDir?: string): boolean {
+export function hasPersistedAuthProfileSecretsStore(
+  agentDir?: string,
+  options: OpenClawStateDatabaseOptions = {},
+): boolean {
   return (
-    readOpenClawStateKvJsonResult(AUTH_PROFILE_STORE_KV_SCOPE, authProfileStoreKey(agentDir))
-      .exists === true
+    readOpenClawStateKvJsonResult(
+      AUTH_PROFILE_STORE_KV_SCOPE,
+      authProfileStoreKey(agentDir),
+      options,
+    ).exists === true
   );
 }
