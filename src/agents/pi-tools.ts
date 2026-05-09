@@ -377,6 +377,8 @@ export function createOpenClawCodingTools(options?: {
   forceHeartbeatTool?: boolean;
   /** If false, build plugin tools only while preserving the shared policy pipeline. */
   includeCoreTools?: boolean;
+  /** PI-only: expose OpenClaw Tool Search controls for catalog compaction. */
+  includeToolSearchControls?: boolean;
   /** Limits which tool families are materialized before the shared policy pipeline runs. */
   toolConstructionPlan?: OpenClawCodingToolConstructionPlan;
   /** Whether the sender is an owner (required for owner-only tools). */
@@ -707,7 +709,9 @@ export function createOpenClawCodingTools(options?: {
           resolvedConfig: options?.config,
         });
   const toolSearchTools =
-    includeOpenClawTools && resolveToolSearchConfig(options?.config).enabled
+    includeOpenClawTools &&
+    options?.includeToolSearchControls === true &&
+    resolveToolSearchConfig(options?.config).enabled
       ? createToolSearchTools({
           config: options?.config,
           runtimeConfig: options?.config,

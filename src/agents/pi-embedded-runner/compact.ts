@@ -723,6 +723,7 @@ async function compactEmbeddedPiSessionDirectOnce(
       modelAuthMode: resolveModelAuthMode(model.provider, params.config, undefined, {
         workspaceDir: effectiveWorkspace,
       }),
+      includeToolSearchControls: true,
     });
     const toolsEnabled = supportsModelTools(runtimeModel);
     const runtimePlanModelContext = {

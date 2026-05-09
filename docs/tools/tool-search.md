@@ -1,19 +1,19 @@
 ---
-summary: "Tool Search: compact large OpenClaw, MCP, and client tool catalogs behind search, describe, and call"
+summary: "Tool Search: compact large PI tool catalogs behind search, describe, and call"
 title: "Tool Search"
 read_when:
-  - You want agents to use a large tool catalog without adding every tool schema to the prompt
-  - You want OpenClaw tools, MCP tools, and client tools exposed through one compact surface
+  - You want PI agents to use a large tool catalog without adding every tool schema to the prompt
+  - You want OpenClaw tools, MCP tools, and client tools exposed through one compact PI surface
   - You are implementing or debugging tool discovery for PI runs
 ---
 
-Tool Search gives the agent one compact way to discover and call large tool
+Tool Search gives PI agents one compact way to discover and call large tool
 catalogs. It is useful when the run has many available tools but the model is
 likely to need only a few of them.
 
-By default, the model receives one `tool_search_code` tool. That tool runs a
-short JavaScript body in an isolated Node subprocess with an `openclaw.tools`
-bridge:
+When enabled for PI, the model receives one `tool_search_code` tool by default.
+That tool runs a short JavaScript body in an isolated Node subprocess with an
+`openclaw.tools` bridge:
 
 ```js
 const hits = await openclaw.tools.search("create a GitHub issue");
@@ -29,16 +29,22 @@ client-provided tools. The model does not see every full schema up front.
 Instead, it searches compact descriptors, describes one selected tool when it
 needs the exact schema, and calls that tool through OpenClaw.
 
+Codex harness runs do not receive these OpenClaw Tool Search controls. OpenClaw
+passes product capabilities to Codex as dynamic tools, and Codex owns native
+code mode, native tool search, deferred dynamic tools, and nested tool calls.
+
 ## How a turn runs
 
-At planning time OpenClaw builds the effective catalog for the run:
+At planning time the PI embedded runner builds the effective catalog for the
+run:
 
 1. Resolve the active tool policy for the agent, profile, sandbox, and session.
 2. List eligible OpenClaw and plugin tools.
 3. List eligible MCP tools through the session MCP runtime.
 4. Add eligible client tools supplied for the current run.
 5. Index compact descriptors for search.
-6. Expose either the code bridge or the structured fallback tools to the model.
+6. Expose either the PI code bridge or the structured fallback tools to the
+   model.
 
 At execution time every real tool call returns to OpenClaw. The isolated Node
 runtime does not hold plugin implementations, MCP client objects, or secrets.
@@ -141,7 +147,7 @@ Normal OpenClaw behavior still applies to final calls:
 
 ## Config
 
-Enable Tool Search with the default code bridge:
+Enable Tool Search for PI runs with the default code bridge:
 
 ```bash
 openclaw config set tools.toolSearch true
@@ -157,7 +163,7 @@ Equivalent JSON:
 }
 ```
 
-Use the structured fallback tools instead:
+Use the structured fallback tools instead for PI runs:
 
 ```json5
 {
