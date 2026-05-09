@@ -85,9 +85,15 @@ describe("Tool Search", () => {
       `,
     });
 
-    expect(alpha.execute).toHaveBeenCalledWith("tool_search_code:fake_create_ticket:1", {
-      value: "ship",
-    });
+    expect(alpha.execute).toHaveBeenCalledWith(
+      "tool_search_code:fake_create_ticket:1",
+      {
+        value: "ship",
+      },
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.details).toMatchObject({
       ok: true,
       telemetry: {
@@ -216,11 +222,124 @@ describe("Tool Search", () => {
       `,
     });
 
-    expect(target.execute).toHaveBeenNthCalledWith(1, "tool_search_code:fake_repeated:1", {
-      value: "one",
+    expect(target.execute).toHaveBeenNthCalledWith(
+      1,
+      "tool_search_code:fake_repeated:1",
+      {
+        value: "one",
+      },
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(target.execute).toHaveBeenNthCalledWith(
+      2,
+      "tool_search_code:fake_repeated:2",
+      {
+        value: "two",
+      },
+      undefined,
+      undefined,
+      undefined,
+    );
+  });
+
+  it("routes bridged calls through the configured catalog executor", async () => {
+    const codeTool = fakeTool(TOOL_SEARCH_CODE_MODE_TOOL_NAME, "code mode");
+    const target = pluginTool("fake_lifecycle", "Run through lifecycle executor");
+    const abortController = new AbortController();
+    const onUpdate = vi.fn();
+    const executeTool = vi.fn(async () => jsonResult({ status: "ok" }));
+
+    applyToolSearchCatalog({
+      tools: [codeTool, target],
+      config: { tools: { toolSearch: true } } as never,
+      sessionId: "session-lifecycle",
+      sessionKey: "agent:main:main",
     });
-    expect(target.execute).toHaveBeenNthCalledWith(2, "tool_search_code:fake_repeated:2", {
-      value: "two",
+
+    const [runtimeCodeTool, , , runtimeCallTool] = createToolSearchTools({
+      sessionId: "session-lifecycle",
+      sessionKey: "agent:main:main",
+      config: {},
+      abortSignal: abortController.signal,
+      executeTool,
+    });
+    await runtimeCodeTool.execute(
+      "call-lifecycle",
+      {
+        code: `return await openclaw.tools.call("fake_lifecycle", { value: "ok" });`,
+      },
+      undefined,
+      onUpdate,
+    );
+
+    expect(target.execute).not.toHaveBeenCalled();
+    expect(executeTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: expect.objectContaining({ name: "fake_lifecycle" }),
+        toolName: "fake_lifecycle",
+        toolCallId: "tool_search_code:fake_lifecycle:1",
+        input: { value: "ok" },
+        signal: abortController.signal,
+        onUpdate,
+      }),
+    );
+
+    await runtimeCallTool.execute(
+      "call-lifecycle-structured",
+      {
+        id: "fake_lifecycle",
+        args: { value: "structured" },
+      },
+      abortController.signal,
+      onUpdate,
+    );
+
+    expect(target.execute).not.toHaveBeenCalled();
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        tool: expect.objectContaining({ name: "fake_lifecycle" }),
+        toolName: "fake_lifecycle",
+        toolCallId: "tool_search_code:fake_lifecycle:1",
+        input: { value: "structured" },
+        signal: abortController.signal,
+        onUpdate,
+      }),
+    );
+  });
+
+  it("does not execute fire-and-forget bridged calls after code returns", async () => {
+    const codeTool = fakeTool(TOOL_SEARCH_CODE_MODE_TOOL_NAME, "code mode");
+    const target = pluginTool("fake_fire_and_forget", "Should not run unless awaited");
+
+    applyToolSearchCatalog({
+      tools: [codeTool, target],
+      config: { tools: { toolSearch: true } } as never,
+      sessionId: "session-fire-and-forget",
+      sessionKey: "agent:main:main",
+    });
+
+    const [runtimeCodeTool] = createToolSearchTools({
+      sessionId: "session-fire-and-forget",
+      sessionKey: "agent:main:main",
+      config: {},
+    });
+    const result = await runtimeCodeTool.execute("call-fire-and-forget", {
+      code: `
+        openclaw.tools.call("fake_fire_and_forget", { value: "late" });
+        return "done";
+      `,
+    });
+
+    expect(target.execute).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      ok: true,
+      value: "done",
+      telemetry: {
+        callCount: 0,
+      },
     });
   });
 

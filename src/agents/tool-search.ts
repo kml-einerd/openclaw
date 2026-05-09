@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult, AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
@@ -33,6 +33,15 @@ type ToolSearchMode = "code" | "tools";
 type CatalogSource = "openclaw" | "mcp" | "client";
 type CatalogTool = AnyAgentTool | ToolDefinition;
 
+export type ToolSearchCatalogToolExecutor = (params: {
+  tool: CatalogTool;
+  toolName: string;
+  toolCallId: string;
+  input: unknown;
+  signal?: AbortSignal;
+  onUpdate?: AgentToolUpdateCallback<unknown>;
+}) => Promise<AgentToolResult<unknown>>;
+
 export type ToolSearchConfig = {
   enabled: boolean;
   mode: ToolSearchMode;
@@ -47,6 +56,8 @@ export type ToolSearchToolContext = {
   agentId?: string;
   sessionKey?: string;
   sessionId?: string;
+  abortSignal?: AbortSignal;
+  executeTool?: ToolSearchCatalogToolExecutor;
 };
 
 export type ToolSearchCatalogEntry = {
@@ -132,10 +143,21 @@ function formatLogItem(value) {
 }
 
 function bridge(method, args) {
-  const id = String(nextBridgeId++);
-  send({ type: "bridge", id, method, args });
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+  let promise;
+  const start = () => {
+    if (!promise) {
+      const id = String(nextBridgeId++);
+      promise = new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        send({ type: "bridge", id, method, args });
+      });
+    }
+    return promise;
+  };
+  return Object.freeze({
+    then: (resolve, reject) => start().then(resolve, reject),
+    catch: (reject) => start().catch(reject),
+    finally: (onFinally) => start().finally(onFinally),
   });
 }
 
@@ -648,16 +670,33 @@ class ToolSearchRuntime {
     return describeEntry(findEntry(catalog, id));
   };
 
-  call = async (id: string, input?: unknown) => {
+  call = async (
+    id: string,
+    input?: unknown,
+    options?: { signal?: AbortSignal; onUpdate?: AgentToolUpdateCallback<unknown> },
+  ) => {
     const catalog = resolveCatalog(this.ctx);
     const entry = findEntry(catalog, id);
     catalog.callCount += 1;
-    const execute = entry.tool.execute as (
-      toolCallId: string,
-      input: unknown,
-    ) => Promise<AgentToolResult<unknown>>;
     const toolCallId = `tool_search_code:${entry.name}:${++this.callSequence}`;
-    const result = await execute(toolCallId, input ?? {});
+    const executeTool =
+      this.ctx.executeTool ??
+      (async (params: Parameters<ToolSearchCatalogToolExecutor>[0]) =>
+        await params.tool.execute(
+          params.toolCallId,
+          params.input,
+          params.signal,
+          params.onUpdate,
+          undefined as never,
+        ));
+    const result = await executeTool({
+      tool: entry.tool,
+      toolName: entry.name,
+      toolCallId,
+      input: input ?? {},
+      signal: options?.signal ?? this.ctx.abortSignal,
+      onUpdate: options?.onUpdate,
+    });
     return {
       tool: compactEntry(entry),
       result,
@@ -701,6 +740,8 @@ async function runCodeMode(params: {
   ctx: ToolSearchToolContext;
   code: string;
   config: ToolSearchConfig;
+  signal?: AbortSignal;
+  onUpdate?: AgentToolUpdateCallback<unknown>;
 }) {
   const runtime = new ToolSearchRuntime(params.ctx, params.config);
   const logs: string[] = [];
@@ -709,6 +750,8 @@ async function runCodeMode(params: {
     config: params.config,
     logs,
     runtime,
+    signal: params.signal,
+    onUpdate: params.onUpdate,
   });
   return {
     ok: true,
@@ -733,6 +776,7 @@ async function runCodeModeBridgeRequest(
   runtime: ToolSearchRuntime,
   method: CodeModeBridgeMethod,
   args: unknown,
+  options?: { signal?: AbortSignal; onUpdate?: AgentToolUpdateCallback<unknown> },
 ): Promise<unknown> {
   const values = Array.isArray(args) ? args : [];
   switch (method) {
@@ -758,7 +802,7 @@ async function runCodeModeBridgeRequest(
       if (typeof id !== "string") {
         throw new ToolInputError("call id must be a string.");
       }
-      return await runtime.call(id, values[1] ?? {});
+      return await runtime.call(id, values[1] ?? {}, options);
     }
   }
   throw new ToolInputError("Unsupported tool_search_code bridge method.");
@@ -769,6 +813,8 @@ function runCodeModeChild(params: {
   config: ToolSearchConfig;
   logs: string[];
   runtime: ToolSearchRuntime;
+  signal?: AbortSignal;
+  onUpdate?: AgentToolUpdateCallback<unknown>;
 }): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, buildCodeModeChildArgs(), {
@@ -786,6 +832,7 @@ function runCodeModeChild(params: {
       }
       settled = true;
       clearTimeout(timer);
+      child.kill();
       callback();
     };
     timer = setTimeout(() => {
@@ -819,6 +866,9 @@ function runCodeModeChild(params: {
       );
     });
     child.on("message", (message: CodeModeChildMessage) => {
+      if (settled) {
+        return;
+      }
       if (!isRecord(message) || typeof message.type !== "string") {
         return;
       }
@@ -845,24 +895,33 @@ function runCodeModeChild(params: {
       if (!id || !method) {
         return;
       }
-      void runCodeModeBridgeRequest(params.runtime, method, message.args)
+      void runCodeModeBridgeRequest(params.runtime, method, message.args, {
+        signal: params.signal,
+        onUpdate: params.onUpdate,
+      })
         .then((value) => {
+          if (settled || !child.connected) {
+            return;
+          }
           const response: CodeModeBridgeResultMessage = {
             type: "bridge-result",
             id,
             ok: true,
             value: toJsonSafe(value),
           };
-          child.send(response);
+          child.send(response, () => undefined);
         })
         .catch((error: unknown) => {
+          if (settled || !child.connected) {
+            return;
+          }
           const response: CodeModeBridgeResultMessage = {
             type: "bridge-result",
             id,
             ok: false,
             error: error instanceof Error ? error.message : String(error),
           };
-          child.send(response);
+          child.send(response, () => undefined);
         });
     });
 
@@ -898,8 +957,13 @@ export function createToolSearchTools(ctx: ToolSearchToolContext): AnyAgentTool[
             "JavaScript body for an async function. Use return to return the final value. The openclaw.tools bridge is available.",
         }),
       }),
-      execute: async (_toolCallId: string, args: unknown): Promise<AgentToolResult<unknown>> =>
-        jsonResult(await runCodeMode({ ctx, code: readCode(args), config })),
+      execute: async (
+        _toolCallId: string,
+        args: unknown,
+        signal?: AbortSignal,
+        onUpdate?: AgentToolUpdateCallback<unknown>,
+      ): Promise<AgentToolResult<unknown>> =>
+        jsonResult(await runCodeMode({ ctx, code: readCode(args), config, signal, onUpdate })),
     },
     {
       name: TOOL_SEARCH_RAW_TOOL_NAME,
@@ -934,9 +998,14 @@ export function createToolSearchTools(ctx: ToolSearchToolContext): AnyAgentTool[
           Type.Record(Type.String(), Type.Unknown(), { description: "Tool input." }),
         ),
       }),
-      execute: async (_toolCallId: string, args: unknown): Promise<AgentToolResult<unknown>> => {
+      execute: async (
+        _toolCallId: string,
+        args: unknown,
+        signal?: AbortSignal,
+        onUpdate?: AgentToolUpdateCallback<unknown>,
+      ): Promise<AgentToolResult<unknown>> => {
         const call = readCallArgs(args);
-        return jsonResult(await runtime.call(call.id, call.input));
+        return jsonResult(await runtime.call(call.id, call.input, { signal, onUpdate }));
       },
     },
   ];

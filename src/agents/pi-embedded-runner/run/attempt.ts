@@ -177,6 +177,7 @@ import {
   addClientToolsToToolSearchCatalog,
   applyToolSearchCatalog,
   clearToolSearchCatalog,
+  type ToolSearchCatalogToolExecutor,
 } from "../../tool-search.js";
 import { shouldAllowProviderOwnedThinkingReplay } from "../../transcript-policy.js";
 import { normalizeUsage, type NormalizedUsage } from "../../usage.js";
@@ -842,6 +843,7 @@ export async function runEmbeddedAttempt(
       isRawModelRun,
       toolsAllow: params.toolsAllow,
     });
+    let toolSearchCatalogExecutor: ToolSearchCatalogToolExecutor | undefined;
     const toolsRaw = !toolConstructionPlan.constructTools
       ? []
       : (() => {
@@ -902,6 +904,12 @@ export async function runEmbeddedAttempt(
             currentMessageId: params.currentMessageId,
             includeCoreTools: toolConstructionPlan.includeCoreTools,
             includeToolSearchControls: true,
+            toolSearchCatalogExecutor: (toolParams) => {
+              if (!toolSearchCatalogExecutor) {
+                throw new Error("Tool Search catalog executor is unavailable for this run.");
+              }
+              return toolSearchCatalogExecutor(toolParams);
+            },
             toolConstructionPlan: toolConstructionPlan.codingToolConstructionPlan,
             replyToMode: params.replyToMode,
             hasRepliedRef: params.hasRepliedRef,
@@ -2468,6 +2476,7 @@ export async function runEmbeddedAttempt(
       const {
         assistantTexts,
         toolMetas,
+        runToolLifecycle,
         unsubscribe,
         waitForCompactionRetry,
         isCompactionInFlight,
@@ -2486,6 +2495,20 @@ export async function runEmbeddedAttempt(
         getCompactionCount,
         getLastCompactionTokensAfter,
       } = subscription;
+      toolSearchCatalogExecutor = async (toolParams) =>
+        await runToolLifecycle({
+          toolName: toolParams.toolName,
+          toolCallId: toolParams.toolCallId,
+          args: toolParams.input,
+          execute: async () =>
+            await toolParams.tool.execute(
+              toolParams.toolCallId,
+              toolParams.input,
+              toolParams.signal ?? runAbortController.signal,
+              toolParams.onUpdate,
+              undefined as never,
+            ),
+        });
 
       const queueHandle: EmbeddedPiQueueHandle & {
         kind: "embedded";

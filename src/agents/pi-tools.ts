@@ -78,7 +78,11 @@ import {
   normalizeToolName,
   resolveToolProfilePolicy,
 } from "./tool-policy.js";
-import { createToolSearchTools, resolveToolSearchConfig } from "./tool-search.js";
+import {
+  createToolSearchTools,
+  resolveToolSearchConfig,
+  type ToolSearchCatalogToolExecutor,
+} from "./tool-search.js";
 import { resolveWorkspaceRoot } from "./workspace-dir.js";
 
 function isOpenAIProvider(provider?: string) {
@@ -379,6 +383,8 @@ export function createOpenClawCodingTools(options?: {
   includeCoreTools?: boolean;
   /** PI-only: expose OpenClaw Tool Search controls for catalog compaction. */
   includeToolSearchControls?: boolean;
+  /** Executes cataloged tools through the active PI run lifecycle. */
+  toolSearchCatalogExecutor?: ToolSearchCatalogToolExecutor;
   /** Limits which tool families are materialized before the shared policy pipeline runs. */
   toolConstructionPlan?: OpenClawCodingToolConstructionPlan;
   /** Whether the sender is an owner (required for owner-only tools). */
@@ -718,6 +724,8 @@ export function createOpenClawCodingTools(options?: {
           agentId,
           sessionKey: options?.sessionKey,
           sessionId: options?.sessionId,
+          abortSignal: options?.abortSignal,
+          executeTool: options?.toolSearchCatalogExecutor,
         })
       : [];
   const tools: AnyAgentTool[] = [
