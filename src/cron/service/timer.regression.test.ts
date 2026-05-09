@@ -47,10 +47,10 @@ function requireTimestamp(value: number | undefined, label: string): number {
 describe("cron service timer regressions", () => {
   it("caps timer delay to 60s for far-future schedules", async () => {
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       enqueueSystemEvent: vi.fn(),
       requestHeartbeat: vi.fn(),
@@ -70,7 +70,7 @@ describe("cron service timer regressions", () => {
       state: { nextRunAtMs: Date.parse("2035-01-01T00:00:00.000Z") },
     } satisfies CronJob;
     state.store = { version: 1, jobs: [job] };
-    await writeCronJobs(store.storePath, [job]);
+    await writeCronJobs(store.storeKey, [job]);
 
     await onTimer(state);
 
@@ -83,10 +83,10 @@ describe("cron service timer regressions", () => {
 
   it("re-arms timer without hot-looping when a run is already in progress", async () => {
     const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const now = Date.parse("2026-02-06T10:05:00.000Z");
     const state = createRunningCronServiceState({
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       jobs: [createDueIsolatedJob({ id: "due", nowMs: now, nextRunAtMs: now - 1 })],
@@ -111,7 +111,7 @@ describe("cron service timer regressions", () => {
       deleteAfterRun: boolean;
       firstError?: string;
     }) => {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const cronJob = createIsolatedRegressionJob({
         id: params.id,
         name: "reminder",
@@ -121,7 +121,7 @@ describe("cron service timer regressions", () => {
         state: { nextRunAtMs: scheduledAt },
       });
       cronJob.deleteAfterRun = params.deleteAfterRun;
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       let now = scheduledAt;
       const runIsolatedAgentJob = vi
@@ -133,7 +133,7 @@ describe("cron service timer regressions", () => {
         .mockResolvedValueOnce({ status: "ok", summary: "done" });
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -184,7 +184,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("#24355: one-shot job disabled after max transient retries", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-06T10:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -195,7 +195,7 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "remind me" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const runIsolatedAgentJob = vi.fn().mockResolvedValue({
@@ -204,7 +204,7 @@ describe("cron service timer regressions", () => {
     });
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -226,7 +226,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("#24355: one-shot job respects cron.retry config", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-06T10:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -237,7 +237,7 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "remind me" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const runIsolatedAgentJob = vi.fn().mockResolvedValue({
@@ -246,7 +246,7 @@ describe("cron service timer regressions", () => {
     });
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -271,7 +271,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("#24355: one-shot job retries status-only 529 failures when retryOn only includes overloaded", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-06T10:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -282,7 +282,7 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "remind me" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const runIsolatedAgentJob = vi
@@ -291,7 +291,7 @@ describe("cron service timer regressions", () => {
       .mockResolvedValueOnce({ status: "ok", summary: "done" });
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -366,7 +366,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("#38822: one-shot job retries Bedrock too-many-tokens-per-day errors", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-03-08T10:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -377,7 +377,7 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "remind me" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const runIsolatedAgentJob = vi
@@ -389,7 +389,7 @@ describe("cron service timer regressions", () => {
       .mockResolvedValueOnce({ status: "ok", summary: "done" });
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -415,7 +415,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("#24355: one-shot job disabled immediately on permanent error", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-06T10:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -426,12 +426,12 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "remind me" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -451,7 +451,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("prevents spin loop when cron job completes within the scheduled second (#17821)", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
     const nextDay = scheduledAt + 86_400_000;
 
@@ -463,13 +463,13 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "briefing" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     let fireCount = 0;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -492,7 +492,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("enforces a minimum refire gap for second-granularity cron schedules (#17821)", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -503,12 +503,12 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "pulse" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -527,7 +527,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("treats timeoutSeconds=0 as no timeout for isolated agentTurn jobs", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -538,13 +538,13 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "work", timeoutSeconds: 0 },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const deferredRun = createDeferred<{ status: "ok"; summary: string }>();
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -574,7 +574,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("does not time out agentTurn jobs at the default 10-minute safety window", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
 
     const cronJob = createIsolatedRegressionJob({
@@ -585,7 +585,7 @@ describe("cron service timer regressions", () => {
       payload: { kind: "agentTurn", message: "work" },
       state: { nextRunAtMs: scheduledAt },
     });
-    await writeCronJobs(store.storePath, [cronJob]);
+    await writeCronJobs(store.storeKey, [cronJob]);
 
     let now = scheduledAt;
     const deferredRun = createDeferred<{ status: "ok"; summary: string }>();
@@ -599,7 +599,7 @@ describe("cron service timer regressions", () => {
     });
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -628,7 +628,7 @@ describe("cron service timer regressions", () => {
   it("aborts isolated runs when cron timeout fires", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
       const cronJob = createIsolatedRegressionJob({
         id: "abort-on-timeout",
@@ -638,13 +638,13 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds: FAST_TIMEOUT_SECONDS },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       let now = scheduledAt;
       const abortAwareRunner = createAbortAwareIsolatedRunner();
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -673,7 +673,7 @@ describe("cron service timer regressions", () => {
   it("does not spend isolated execution timeout while waiting for the runner lane (#41783)", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
       const cronJob = createIsolatedRegressionJob({
         id: "timeout-after-lane-start",
@@ -683,7 +683,7 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds: FAST_TIMEOUT_SECONDS },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       let now = scheduledAt;
       const runnerEntered = createDeferred<void>();
@@ -691,7 +691,7 @@ describe("cron service timer regressions", () => {
       let observedAbortSignal: AbortSignal | undefined;
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -741,7 +741,7 @@ describe("cron service timer regressions", () => {
   it("suppresses isolated follow-up side effects after timeout", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
       const enqueueSystemEvent = vi.fn();
 
@@ -753,13 +753,13 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds: FAST_TIMEOUT_SECONDS },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       let now = scheduledAt;
       const abortAwareRunner = createAbortAwareIsolatedRunner("late-summary");
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent,
@@ -790,7 +790,7 @@ describe("cron service timer regressions", () => {
   it("applies timeoutSeconds to startup catch-up isolated executions", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
       const cronJob = createIsolatedRegressionJob({
         id: "startup-timeout",
@@ -800,13 +800,13 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds: FAST_TIMEOUT_SECONDS },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       let now = scheduledAt;
       const abortAwareRunner = createAbortAwareIsolatedRunner();
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -856,7 +856,7 @@ describe("cron service timer regressions", () => {
     };
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/openclaw-cron-abort-test/jobs.json",
+      storeKey: "abort-cleanup",
       log: noopLogger,
       nowMs: () => Date.now(),
       enqueueSystemEvent,
@@ -908,7 +908,7 @@ describe("cron service timer regressions", () => {
     };
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/openclaw-cron-busy-main-test/jobs.json",
+      storeKey: "busy-main",
       log: noopLogger,
       nowMs,
       enqueueSystemEvent,
@@ -962,17 +962,17 @@ describe("cron service timer regressions", () => {
   });
 
   it("records per-job start time and duration for batched due jobs", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const dueAt = Date.parse("2026-02-06T10:05:01.000Z");
     const first = createDueIsolatedJob({ id: "batch-first", nowMs: dueAt, nextRunAtMs: dueAt });
     const second = createDueIsolatedJob({ id: "batch-second", nowMs: dueAt, nextRunAtMs: dueAt });
-    await writeCronJobs(store.storePath, [first, second]);
+    await writeCronJobs(store.storeKey, [first, second]);
 
     let now = dueAt;
     const events: CronEvent[] = [];
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log: noopLogger,
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
@@ -1004,7 +1004,7 @@ describe("cron service timer regressions", () => {
 
   it("honors cron maxConcurrentRuns for due jobs", async () => {
     vi.useRealTimers();
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const dueAt = Date.parse("2026-02-06T10:05:01.000Z");
     const first = createDueIsolatedJob({ id: "parallel-first", nowMs: dueAt, nextRunAtMs: dueAt });
     const second = createDueIsolatedJob({
@@ -1012,7 +1012,7 @@ describe("cron service timer regressions", () => {
       nowMs: dueAt,
       nextRunAtMs: dueAt,
     });
-    await writeCronJobs(store.storePath, [first, second]);
+    await writeCronJobs(store.storeKey, [first, second]);
 
     let now = dueAt;
     let activeRuns = 0;
@@ -1022,7 +1022,7 @@ describe("cron service timer regressions", () => {
     const secondRun = createDeferred<{ status: "ok"; summary: string }>();
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       cronConfig: { maxConcurrentRuns: 2 },
       log: noopLogger,
       nowMs: () => now,
@@ -1067,7 +1067,7 @@ describe("cron service timer regressions", () => {
   });
 
   it("finalizes a successful isolated job that removes itself during execution", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const dueAt = Date.parse("2026-02-06T10:05:01.000Z");
     const selfRemovingJob = createDueIsolatedJob({
       id: "self-removing-success",
@@ -1079,7 +1079,7 @@ describe("cron service timer regressions", () => {
       channel: "telegram",
       to: "chat-123",
     };
-    await writeCronJobs(store.storePath, [selfRemovingJob]);
+    await writeCronJobs(store.storeKey, [selfRemovingJob]);
 
     const events: CronEvent[] = [];
     const log = {
@@ -1089,7 +1089,7 @@ describe("cron service timer regressions", () => {
     };
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log,
       nowMs: () => dueAt,
       enqueueSystemEvent: vi.fn(),
@@ -1098,7 +1098,7 @@ describe("cron service timer regressions", () => {
         events.push(evt);
       },
       runIsolatedAgentJob: vi.fn(async (params: { job: { id: string } }) => {
-        await writeCronJobs(store.storePath, []);
+        await writeCronJobs(store.storeKey, []);
         return {
           status: "ok" as const,
           summary: `finished ${params.job.id}`,
@@ -1131,14 +1131,14 @@ describe("cron service timer regressions", () => {
   });
 
   it("keeps missing-job discard semantics for failed isolated outcomes", async () => {
-    const store = timerRegressionFixtures.makeStorePath();
+    const store = timerRegressionFixtures.makeStoreKey();
     const dueAt = Date.parse("2026-02-06T10:05:01.000Z");
     const failedJob = createDueIsolatedJob({
       id: "self-removing-failure",
       nowMs: dueAt,
       nextRunAtMs: dueAt,
     });
-    await writeCronJobs(store.storePath, [failedJob]);
+    await writeCronJobs(store.storeKey, [failedJob]);
 
     const events: CronEvent[] = [];
     const log = {
@@ -1147,7 +1147,7 @@ describe("cron service timer regressions", () => {
     };
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: store.storePath,
+      storeKey: store.storeKey,
       log,
       nowMs: () => dueAt,
       enqueueSystemEvent: vi.fn(),
@@ -1156,7 +1156,7 @@ describe("cron service timer regressions", () => {
         events.push(evt);
       },
       runIsolatedAgentJob: vi.fn(async () => {
-        await writeCronJobs(store.storePath, []);
+        await writeCronJobs(store.storeKey, []);
         return { status: "error" as const, error: "agent failed after removal" };
       }),
     });
@@ -1178,7 +1178,7 @@ describe("cron service timer regressions", () => {
   it("outer cron timeout fires at configured timeoutSeconds, not at 1/3 (#29774)", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
       const timeoutSeconds = 1;
       const cronJob = createIsolatedRegressionJob({
@@ -1189,7 +1189,7 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       vi.setSystemTime(scheduledAt);
       let now = scheduledAt;
@@ -1199,7 +1199,7 @@ describe("cron service timer regressions", () => {
 
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -1262,7 +1262,7 @@ describe("cron service timer regressions", () => {
   it("cleans up timed-out isolated runs even when the runner ignores abort", async () => {
     vi.useFakeTimers();
     try {
-      const store = timerRegressionFixtures.makeStorePath();
+      const store = timerRegressionFixtures.makeStoreKey();
       const scheduledAt = Date.parse("2026-02-15T14:00:00.000Z");
       const cronJob = createIsolatedRegressionJob({
         id: "timeout-cleanup-stuck-run",
@@ -1272,7 +1272,7 @@ describe("cron service timer regressions", () => {
         payload: { kind: "agentTurn", message: "work", timeoutSeconds: 1 },
         state: { nextRunAtMs: scheduledAt },
       });
-      await writeCronJobs(store.storePath, [cronJob]);
+      await writeCronJobs(store.storeKey, [cronJob]);
 
       vi.setSystemTime(scheduledAt);
       let now = scheduledAt;
@@ -1281,7 +1281,7 @@ describe("cron service timer regressions", () => {
       const cleanupTimedOutAgentRun = vi.fn(async () => {});
       const state = createCronServiceState({
         cronEnabled: true,
-        storePath: store.storePath,
+        storeKey: store.storeKey,
         log: noopLogger,
         nowMs: () => now,
         enqueueSystemEvent: vi.fn(),
@@ -1344,7 +1344,7 @@ describe("cron service timer regressions", () => {
     const endedAt = startedAt + 50;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/cron-30905-success.json",
+      storeKey: "cron-30905-success",
       log: noopLogger,
       nowMs: () => endedAt,
       enqueueSystemEvent: vi.fn(),
@@ -1382,7 +1382,7 @@ describe("cron service timer regressions", () => {
     const endedAt = startedAt + 25;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/cron-30905-error.json",
+      storeKey: "cron-30905-error",
       log: noopLogger,
       nowMs: () => endedAt,
       enqueueSystemEvent: vi.fn(),
@@ -1421,7 +1421,7 @@ describe("cron service timer regressions", () => {
     const endedAt = startedAt + 50;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/cron-66019-success.json",
+      storeKey: "cron-66019-success",
       log: noopLogger,
       nowMs: () => endedAt,
       enqueueSystemEvent: vi.fn(),
@@ -1462,7 +1462,7 @@ describe("cron service timer regressions", () => {
     const endedAt = startedAt + 25;
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/cron-66019-error.json",
+      storeKey: "cron-66019-error",
       log: noopLogger,
       nowMs: () => endedAt,
       enqueueSystemEvent: vi.fn(),
@@ -1521,7 +1521,7 @@ describe("cron service timer regressions", () => {
       },
     };
     const state = createRunningCronServiceState({
-      storePath: "/tmp/cron-force-run-anchor-test.json",
+      storeKey: "cron-force-run-anchor",
       log: noopLogger,
       nowMs: () => nowMs,
       jobs: [job],
@@ -1550,7 +1550,7 @@ describe("cron service timer regressions", () => {
     const log = { ...noopLogger, warn: vi.fn() };
     const state = createCronServiceState({
       cronEnabled: true,
-      storePath: "/tmp/cron-diagnostics-job.json",
+      storeKey: "cron-diagnostics-job",
       log,
       nowMs: () => endedAt,
       enqueueSystemEvent: vi.fn(),
