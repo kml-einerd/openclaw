@@ -622,6 +622,8 @@ function getTelemetry(catalog: ToolSearchCatalogSession) {
 }
 
 class ToolSearchRuntime {
+  private callSequence = 0;
+
   constructor(
     private readonly ctx: ToolSearchToolContext,
     private readonly config: ToolSearchConfig,
@@ -654,7 +656,8 @@ class ToolSearchRuntime {
       toolCallId: string,
       input: unknown,
     ) => Promise<AgentToolResult<unknown>>;
-    const result = await execute(`tool_search_code:${entry.name}`, input ?? {});
+    const toolCallId = `tool_search_code:${entry.name}:${++this.callSequence}`;
+    const result = await execute(toolCallId, input ?? {});
     return {
       tool: compactEntry(entry),
       result,

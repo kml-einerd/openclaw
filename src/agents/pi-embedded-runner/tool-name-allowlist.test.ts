@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { findClientToolNameConflicts } from "../pi-tool-definition-adapter.js";
 import { createStubTool } from "../test-helpers/pi-tool-stubs.js";
+import { applyToolSearchCatalog, TOOL_SEARCH_CODE_MODE_TOOL_NAME } from "../tool-search.js";
 import {
   collectAllowedToolNames,
+  collectCoreBuiltinToolNames,
   collectRegisteredToolNames,
   PI_RESERVED_TOOL_NAMES,
   toSessionToolAllowlist,
@@ -43,6 +46,37 @@ describe("tool name allowlists", () => {
     );
 
     expect(allowlist).toEqual(["exec", "image_generate", "read"]);
+  });
+
+  it("keeps hidden core names available for client conflict admission", () => {
+    const uncompactedTools = [
+      createStubTool(TOOL_SEARCH_CODE_MODE_TOOL_NAME),
+      createStubTool("exec"),
+      createStubTool("message"),
+    ];
+    const compacted = applyToolSearchCatalog({
+      tools: uncompactedTools,
+      config: { tools: { toolSearch: true } } as never,
+      sessionId: "session-conflict-admission",
+    });
+    const names = collectCoreBuiltinToolNames(uncompactedTools);
+
+    expect([...names]).toEqual([TOOL_SEARCH_CODE_MODE_TOOL_NAME, "exec", "message"]);
+    expect(compacted.tools.map((tool) => tool.name)).toEqual([TOOL_SEARCH_CODE_MODE_TOOL_NAME]);
+    expect(
+      findClientToolNameConflicts({
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "exec",
+              parameters: { type: "object", properties: {} },
+            },
+          },
+        ],
+        existingToolNames: [...names, ...PI_RESERVED_TOOL_NAMES],
+      }),
+    ).toEqual(["exec"]);
   });
 
   it("pins the reserved Pi built-in tool namespace used by client conflict checks", () => {

@@ -232,6 +232,7 @@ import { applySystemPromptOverrideToSession } from "../system-prompt.js";
 import { dropReasoningFromHistory, dropThinkingBlocks } from "../thinking.js";
 import {
   collectAllowedToolNames,
+  collectCoreBuiltinToolNames,
   collectRegisteredToolNames,
   PI_RESERVED_TOOL_NAMES,
   toSessionToolAllowlist,
@@ -1130,7 +1131,8 @@ export async function runEmbeddedAttempt(
       ownerOnlyToolAllowlist: params.ownerOnlyToolAllowlist,
       warn: (message) => log.warn(message),
     });
-    let effectiveTools = [...tools, ...filteredBundledTools];
+    const uncompactedEffectiveTools = [...tools, ...filteredBundledTools];
+    let effectiveTools = uncompactedEffectiveTools;
     const toolSearch = applyToolSearchCatalog({
       tools: effectiveTools,
       config: params.config,
@@ -1617,7 +1619,7 @@ export async function runEmbeddedAttempt(
       // MEDIA: passthrough gate: a normalized alias is not sufficient — the
       // emitted tool name must match an exact registration of this run.
       const builtinToolNames = new Set(
-        effectiveTools.flatMap((tool) => {
+        uncompactedEffectiveTools.flatMap((tool) => {
           const name = (tool.name ?? "").trim();
           return name ? [name] : [];
         }),
@@ -1627,15 +1629,10 @@ export async function runEmbeddedAttempt(
       // plugin tool names. MEDIA passthrough is still gated by the raw-name
       // set above, so a client tool that normalize-collides with a plugin
       // tool cannot inherit the plugin's local-media trust.
-      const coreBuiltinToolNames = new Set(
-        effectiveTools.flatMap((tool) => {
-          const name = (tool.name ?? "").trim();
-          if (!name || getPluginToolMeta(tool)) {
-            return [];
-          }
-          return [name];
-        }),
-      );
+      const coreBuiltinToolNames = collectCoreBuiltinToolNames(uncompactedEffectiveTools, {
+        isPluginTool: (tool) =>
+          Boolean(getPluginToolMeta(tool as Parameters<typeof getPluginToolMeta>[0])),
+      });
       const clientToolNameConflicts = findClientToolNameConflicts({
         tools: clientTools ?? [],
         existingToolNames: [...coreBuiltinToolNames, ...PI_RESERVED_TOOL_NAMES],

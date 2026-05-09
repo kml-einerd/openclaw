@@ -85,7 +85,7 @@ describe("Tool Search", () => {
       `,
     });
 
-    expect(alpha.execute).toHaveBeenCalledWith("tool_search_code:fake_create_ticket", {
+    expect(alpha.execute).toHaveBeenCalledWith("tool_search_code:fake_create_ticket:1", {
       value: "ship",
     });
     expect(result.details).toMatchObject({
@@ -186,11 +186,42 @@ describe("Tool Search", () => {
       code: `return await openclaw.tools.call("fake_hooked", { value: "ok" });`,
     });
     expect(target.execute).toHaveBeenCalledWith(
-      "tool_search_code:fake_hooked",
+      "tool_search_code:fake_hooked:1",
       { value: "ok" },
       undefined,
       undefined,
     );
+  });
+
+  it("uses a unique bridged tool call id for repeated calls", async () => {
+    const codeTool = fakeTool(TOOL_SEARCH_CODE_MODE_TOOL_NAME, "code mode");
+    const target = pluginTool("fake_repeated", "Run a repeated fake tool");
+
+    applyToolSearchCatalog({
+      tools: [codeTool, target],
+      config: { tools: { toolSearch: true } } as never,
+      sessionId: "session-repeated",
+      sessionKey: "agent:main:main",
+    });
+
+    const [runtimeCodeTool] = createToolSearchTools({
+      sessionId: "session-repeated",
+      sessionKey: "agent:main:main",
+      config: {},
+    });
+    await runtimeCodeTool.execute("call-repeated", {
+      code: `
+        await openclaw.tools.call("fake_repeated", { value: "one" });
+        return await openclaw.tools.call("fake_repeated", { value: "two" });
+      `,
+    });
+
+    expect(target.execute).toHaveBeenNthCalledWith(1, "tool_search_code:fake_repeated:1", {
+      value: "one",
+    });
+    expect(target.execute).toHaveBeenNthCalledWith(2, "tool_search_code:fake_repeated:2", {
+      value: "two",
+    });
   });
 
   it("does not expose the host process to model-authored code", async () => {
