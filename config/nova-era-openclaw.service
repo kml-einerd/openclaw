@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenClaw nova-era Gateway
+After=network.target nova-era-db.service
+Wants=nova-era-db.service
+
+[Service]
+Type=simple
+User=agdis
+WorkingDirectory=/home/agdis/Desktop/nova-era-work/nova-era
+ExecStart=/usr/bin/node /home/agdis/Desktop/nova-era-work/nova-era/executores/openclaw/dist/entry.js gateway --port 18789 --bind lan
+Restart=on-failure
+RestartSec=5
+Environment=NODE_OPTIONS=--max-old-space-size=4096
+Environment=HOME=/home/agdis
+
+[Install]
+WantedBy=multi-user.target
